@@ -1,5 +1,6 @@
 #define ALSA_PCM_NEW_HW_PARAMS_API
 #include <alsa/asoundlib.h>
+#include <math.h>
 #include "common.h"
 
 #define NUM_CHANNELS 2
@@ -14,7 +15,6 @@ static snd_mixer_selem_id_t *mixer_master = NULL;
 static snd_mixer_elem_t *volume_handle = NULL;
 static long g_vol_max, g_vol_min;
 static long g_prev_vol = 0;
-static double MAX_AIRPLAY_VOL = 144.0;
 #endif
 
 void audio_set_driver(char* driver) {
