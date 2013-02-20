@@ -450,7 +450,7 @@ static void *rtp_thread_func(void *arg) {
             if (plen >= 16) {
                 buffer_put_packet(seqno, pktp, plen);
             }
-/* Temporary comment this as it breaks ShairPort for me in OpenWRT build.
+/* Temporary comment this as it breaks ShairPort for me in OpenWRT build. */
             else {
                 // resync?
                 if (type == 0x56 && seqno == 0) {
@@ -460,7 +460,7 @@ static void *rtp_thread_func(void *arg) {
                     pthread_mutex_unlock(&ab_mutex);
                 }
             }
-*/
+/**/
         }
     }
 
@@ -742,14 +742,18 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     }
 
     pthread_mutex_lock(&vol_mutex);
+/*
 #ifdef USE_ALSA_VOLUME
     memcpy(outptr,inptr,sizeof(short)*frame_size);
 #else
+*/
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
+/*
 #endif
+*/
     if (stuff) {
         if (stuff==1) {
 #ifdef DEBUGSTUFF

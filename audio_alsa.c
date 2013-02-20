@@ -13,6 +13,7 @@ static snd_mixer_t *mixer_handle = NULL;
 static snd_mixer_selem_id_t *mixer_master = NULL;
 static snd_mixer_elem_t *volume_handle = NULL;
 static long g_vol_max, g_vol_min;
+static long g_prev_vol = 0;
 static double MAX_AIRPLAY_VOL = 144.0;
 #endif
 
@@ -114,9 +115,18 @@ void audio_deinit(void)
 void audio_set_volume(double vol)
 {
 #ifdef USE_ALSA_VOLUME
+//    long cur_vol=(MAX_AIRPLAY_VOL+vol)/MAX_AIRPLAY_VOL*g_vol_max;
+    long cur_vol=(long)(pow(10.0,0.05*vol)*(double)g_vol_max+0.5);
 #ifdef DEBUGALSA
-    fprintf(stderr,"ALSA: Setting volume in ALSA %f with volume %d\n",vol,(int)((MAX_AIRPLAY_VOL+vol)/MAX_AIRPLAY_VOL*g_vol_max));
+    fprintf(stderr,"ALSA: Setting volume in ALSA %f with volume %d\n",vol,(int)cur_vol);
 #endif
-    snd_mixer_selem_set_playback_volume_all(volume_handle,(MAX_AIRPLAY_VOL+vol)/MAX_AIRPLAY_VOL*g_vol_max);
+    if (cur_vol!=g_prev_vol)
+    {
+#ifdef DEBUGALSA
+        fprintf(stderr,"ALSA: Calling function to set volume\n");
+#endif
+    	snd_mixer_selem_set_playback_volume_all(volume_handle,cur_vol);
+        g_prev_vol=cur_vol;
+    }
 #endif
 }
