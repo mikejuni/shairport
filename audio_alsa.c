@@ -8,6 +8,7 @@
 static snd_pcm_t *alsa_handle = NULL;
 static snd_pcm_hw_params_t *alsa_params = NULL;
 static char* DEFAULT_CARD = "default";
+static char* DEFAULT_MIXER = "Master";
 
 #ifdef USE_ALSA_VOLUME
 static snd_mixer_t *mixer_handle = NULL;
@@ -15,14 +16,28 @@ static snd_mixer_selem_id_t *mixer_master = NULL;
 static snd_mixer_elem_t *volume_handle = NULL;
 static long g_vol_max, g_vol_min;
 static long g_prev_vol = 0;
+static char* g_card = NULL;
+static char* g_mixer = NULL;
 #endif
 
 void audio_set_driver(char* driver) {
-    fprintf(stderr, "audio_set_driver: not supported with alsa :%s\n",driver);
+    if (strlen(driver)!=0)
+    {
+        g_card=driver;
+    } else {
+        g_card=DEFAULT_CARD;
+    }
+    fprintf(stderr, "ALSA: audio_set_driver: this sets the PCM device to :%s\n",g_card);
 }
 
 void audio_set_device_name(char* device_name) {
-    fprintf(stderr, "audio_set_device_name: not supported with alsa :%s\n",device_name);
+    if (strlen(device_name)!=0)
+    {
+        g_mixer=device_name;
+    } else {
+	g_mixer=DEFAULT_MIXER;
+    }
+    fprintf(stderr, "ALSA: audio_set_device_name: this sets the output in mixer to :%s\n",g_mixer);
 }
 
 void audio_set_device_id(char* device_id) {
@@ -31,12 +46,12 @@ void audio_set_device_id(char* device_id) {
 
 char* audio_get_driver(void)
 {
-    return NULL;
+    return g_card;
 }
 
 char* audio_get_device_name(void)
 {
-    return NULL;
+    return g_mixer;
 }
 
 char* audio_get_device_id(void)
@@ -60,7 +75,7 @@ void* audio_init(int sampling_rate)
 #endif
     int rc, dir = 0;
     snd_pcm_uframes_t frames = 32;
-    rc = snd_pcm_open(&alsa_handle, DEFAULT_CARD, SND_PCM_STREAM_PLAYBACK, 0);
+    rc = snd_pcm_open(&alsa_handle, g_card, SND_PCM_STREAM_PLAYBACK, 0);
     if (rc < 0) {
         fprintf(stderr, "unable to open pcm device: %s\n", snd_strerror(rc));
         die("alsa initialization failed");
@@ -84,12 +99,12 @@ void* audio_init(int sampling_rate)
 #ifdef USE_ALSA_VOLUME
     fprintf(stderr,"ALSA: Use ALSA Mixer rather than soft manupulating volume\n");
     snd_mixer_open(&mixer_handle, 0);
-    snd_mixer_attach(mixer_handle, DEFAULT_CARD);
+    snd_mixer_attach(mixer_handle, g_card);
     snd_mixer_selem_register(mixer_handle,NULL,NULL);
     snd_mixer_load(mixer_handle);
     snd_mixer_selem_id_alloca(&mixer_master);
     snd_mixer_selem_id_set_index(mixer_master,0);
-    snd_mixer_selem_id_set_name(mixer_master, "Master");
+    snd_mixer_selem_id_set_name(mixer_master, g_mixer);
     volume_handle = snd_mixer_find_selem(mixer_handle, mixer_master);
     snd_mixer_selem_get_playback_volume_range (volume_handle, &g_vol_min, &g_vol_max);
     fprintf(stderr,"ALAS: Mixer volume from %d to %d\n",(int)g_vol_min, (int)g_vol_max);
