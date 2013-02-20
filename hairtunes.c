@@ -446,7 +446,9 @@ static void *rtp_thread_func(void *arg) {
             // check if packet contains enough content to be reasonable
             if (plen >= 16) {
                 buffer_put_packet(seqno, pktp, plen);
-            } else {
+            }
+/* Temporary comment this as it breaks ShairPort for me in OpenWRT build.
+            else {
                 // resync?
                 if (type == 0x56 && seqno == 0) {
                     fprintf(stderr, "Suspected resync request packet received. Initiating resync.\n");
@@ -455,6 +457,7 @@ static void *rtp_thread_func(void *arg) {
                     pthread_mutex_unlock(&ab_mutex);
                 }
             }
+*/
         }
     }
 
