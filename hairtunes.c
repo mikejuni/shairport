@@ -47,7 +47,7 @@
 #endif
 
 #include <assert.h>
-static int debug = 0;
+//static int debug = 1;
 
 #include "alac.h"
 #include "audio.h"
@@ -214,11 +214,13 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
         }
         if (sscanf(line, "vol: %lf\n", &f)) {
             assert(f<=0);
-            if (debug)
-                fprintf(stderr, "VOL: %lf\n", f);
+#ifdef DEBUGCTL
+            fprintf(stderr, "VOL: %lf\n", f);
+#endif
             pthread_mutex_lock(&vol_mutex);
             volume = pow(10.0,0.05*f);
             fix_volume = 65536.0 * volume;
+            audio_set_volume(f);
             pthread_mutex_unlock(&vol_mutex);
             continue;
         }
@@ -229,8 +231,9 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
             pthread_mutex_lock(&ab_mutex);
             ab_resync();
             pthread_mutex_unlock(&ab_mutex);
-            if (debug)
-                fprintf(stderr, "FLUSH\n");
+#ifdef DEBUGCTL
+            fprintf(stderr, "FLUSH\n");
+#endif
         }
     }
     deinit_output();
@@ -562,13 +565,18 @@ static int init_rtp(void) {
     return port;
 }
 
+#ifndef USE_ALSA_VOLUME
 static short lcg_rand(void) {
 	static unsigned long lcg_prev = 12345;
 	lcg_prev = lcg_prev * 69069 + 3;
 	return lcg_prev & 0xffff;
 }
+#endif
 
 static inline short dithered_vol(short sample) {
+#ifdef USE_ALSA_VOLUME
+    return sample;
+#else
     static short rand_a, rand_b;
     long out;
 
@@ -580,6 +588,7 @@ static inline short dithered_vol(short sample) {
         out -= rand_b;
     }
     return out>>16;
+#endif
 }
 
 typedef struct {
@@ -654,9 +663,10 @@ static void bf_est_update(short fill) {
 
     bf_est_drift = biquad_filt(&bf_drift_lpf, CONTROL_B*(adj_error + err_deriv) + bf_est_drift);
 
-    if (debug)
-        fprintf(stderr, "bf %d err %f drift %f desiring %f ed %f estd %f\n",
-                fill, bf_est_err, bf_est_drift, desired_fill, err_deriv, err_deriv + adj_error);
+#ifdef DEBUGSTREAM
+    fprintf(stderr, "bf %d err %f drift %f desiring %f ed %f estd %f\n",
+            fill, bf_est_err, bf_est_drift, desired_fill, err_deriv, err_deriv + adj_error);
+#endif
     bf_playback_rate = 1.0 + adj_error + bf_est_drift;
 
     bf_last_err = bf_est_err;
@@ -732,20 +742,26 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     }
 
     pthread_mutex_lock(&vol_mutex);
+#ifdef USE_ALSA_VOLUME
+    memcpy(outptr,inptr,sizeof(short)*frame_size);
+#else
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
+#endif
     if (stuff) {
         if (stuff==1) {
-            if (debug)
-                fprintf(stderr, "+++++++++\n");
+#ifdef DEBUGSTUFF
+            fprintf(stderr, "+++++++++\n");
+#endif
             // interpolate one sample
             *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
             *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
         } else if (stuff==-1) {
-            if (debug)
-                fprintf(stderr, "---------\n");
+#ifdef DEBUGSTUFF
+            fprintf(stderr, "---------\n");
+#endif
             inptr++;
             inptr++;
         }

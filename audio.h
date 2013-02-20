@@ -9,6 +9,7 @@ char* audio_get_device_name(void);
 char* audio_get_device_id(void);
 void audio_play(char* outbuf, int samples, void* priv_data);
 void* audio_init(int sampling_rate);
+void audio_set_volume(double vol);
 void audio_deinit(void);
 
 #endif
