@@ -1,16 +1,27 @@
-CFLAGS:=-O2 -Wall $(shell pkg-config --cflags openssl ao)
-LDFLAGS:=-lm -lpthread $(shell pkg-config --libs openssl ao)
-OBJS=socketlib.o shairport.o alac.o hairtunes.o audio_ao.o
+CFLAGS+=-Wall $(shell pkg-config --cflags openssl)
+LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
+AOCFLAGS:=$(shell pkg-config --cflags ao)
+AOLDFLAGS:=$(shell pkg-config --libs ao)
+ALSALDFLAGS:=$(shell pkg-config --libs alsa)
+ALSACFLAGS:=$(shell pkg-config --cflags alsa)
+AOOBJS=socketlib.o shairport.o alac.o hairtunes.o audio_ao.o
+ALSAOBJS=socketlib.o shairport.o alac.o hairtunes.o audio_alsa.o
 all: hairtunes shairport
+ao: hairtunes.ao shairport.ao
 
-hairtunes: hairtunes.c alac.o audio_ao.o
-	$(CC) $(CFLAGS) -DHAIRTUNES_STANDALONE hairtunes.c alac.o audio_ao.o -o $@ $(LDFLAGS)
+hairtunes: hairtunes.c alac.o audio_alsa.o
+	$(CC) $(CFLAGS) $(ALSACFLAGS) -DHAIRTUNES_STANDALONE hairtunes.c alac.o audio_alsa.o -o $@ $(LDFLAGS) $(ALSALDFLAGS)
 
-shairport: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@ $(LDFLAGS)
+shairport: $(ALSAOBJS)
+	$(CC) $(CFLAGS) $(ALSACFLAGS) $(ALSAOBJS) -o $@ $(LDFLAGS) $(ALSALDFLAGS)
 
+hairtunes.ao: hairtunes.c alac.o audio_ao.o
+	$(CC) $(CFLAGS) $(AOCFLAGS) -DHAIRTUNES_STANDALONE hairtunes.c alac.o audio_ao.o -o $@ $(LDFLAGS) $(AOLDFLAGS)
+
+shairport.ao: $(AOOBJS)
+	$(CC) $(CFLAGS) $(AOCFLAGS) $(AOOBJS) -o $@ $(LDFLAGS) $(AOLDFLAGS)
 clean:
-	-@rm -rf hairtunes shairport $(OBJS)
+	-@rm -rf hairtunes shairport hairtunes.ao shairport.ao $(ALSAOBJS) $(AOOBJS)
 
 
 %.o: %.c
