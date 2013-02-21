@@ -10,13 +10,13 @@ static snd_pcm_hw_params_t *alsa_params = NULL;
 static char* DEFAULT_CARD = "default";
 static char* DEFAULT_MIXER = "Master";
 
+static char* g_card = NULL;
 #ifdef USE_ALSA_VOLUME
 static snd_mixer_t *mixer_handle = NULL;
 static snd_mixer_selem_id_t *mixer_master = NULL;
 static snd_mixer_elem_t *volume_handle = NULL;
 static long g_vol_max, g_vol_min;
 static long g_prev_vol = 0;
-static char* g_card = NULL;
 static char* g_mixer = NULL;
 #endif
 
@@ -31,6 +31,7 @@ void audio_set_driver(char* driver) {
 }
 
 void audio_set_device_name(char* device_name) {
+#ifdef USE_ALSA_VOLUME
     if (strlen(device_name)!=0)
     {
         g_mixer=device_name;
@@ -38,10 +39,13 @@ void audio_set_device_name(char* device_name) {
 	g_mixer=DEFAULT_MIXER;
     }
     fprintf(stderr, "ALSA: audio_set_device_name: this sets the output in mixer to :%s\n",g_mixer);
+#else
+    fprintf(stderr, "ALSA: audio_set_device_name: not supported\n");
+#endif
 }
 
 void audio_set_device_id(char* device_id) {
-    fprintf(stderr, "audio_set_device_id: not supported with alsa :%s\n",device_id);
+    fprintf(stderr, "ALSA: audio_set_device_id: not supported with alsa :%s\n",device_id);
 }
 
 char* audio_get_driver(void)
@@ -51,7 +55,11 @@ char* audio_get_driver(void)
 
 char* audio_get_device_name(void)
 {
+#ifdef USE_ALSA_VOLUME
     return g_mixer;
+#else
+    return NULL;
+#endif
 }
 
 char* audio_get_device_id(void)
@@ -59,7 +67,7 @@ char* audio_get_device_id(void)
     return NULL;
 }
 
-void audio_play(char* outbuf, int samples, void* priv_data)
+inline void audio_play(char* outbuf, int samples, void* priv_data)
 {
     int err = snd_pcm_writei(alsa_handle, outbuf, samples);
     if (err < 0)
