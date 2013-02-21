@@ -735,6 +735,9 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     double p_stuff;
 
     p_stuff = 1.0 - pow(1.0 - fabs(playback_rate-1.0), frame_size);
+#ifdef DEBUGSTUFF
+    fprintf(stderr,"STUFF: playback rate: %f, stuff: %f\n",playback_rate,p_stuff);
+#endif
 
     if (rand() < p_stuff * RAND_MAX) {
         stuff = playback_rate > 1.0 ? -1 : 1;

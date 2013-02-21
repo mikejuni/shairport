@@ -1,5 +1,5 @@
-#CFLAGS+=-Wall $(shell pkg-config --cflags openssl) -DDEBUGCTL -DDEBUGSTUFF -DDEBUGALSA -DUSE_ALSA_VOLUME -g
-CFLAGS+=-Wall $(shell pkg-config --cflags openssl) 
+CFLAGS+=-Wall $(shell pkg-config --cflags openssl) -DDEBUGCTL -DDEBUGSTUFF -DDEBUGALSA -DUSE_ALSA_VOLUME -DDEBUGALAC -g
+#CFLAGS+=-Wall $(shell pkg-config --cflags openssl) 
 LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
 AOCFLAGS:=$(shell pkg-config --cflags ao)
 AOLDFLAGS:=$(shell pkg-config --libs ao)

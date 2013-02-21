@@ -839,6 +839,9 @@ void decode_frame(alac_file *alac,
         {
         case 16:
         {
+#ifdef DEBUGALAC
+            fprintf(stderr,"ALAC: 16 bit sample\n");
+#endif
             int i;
             for (i = 0; i < outputsamples; i++)
             {
@@ -851,6 +854,9 @@ void decode_frame(alac_file *alac,
         }
         case 24:
         {
+#ifdef DEBUGALAC
+            fprintf(stderr,"ALAC: 24 bit sample\n");
+#endif
             int i;
             for (i = 0; i < outputsamples; i++)
             {
@@ -872,6 +878,9 @@ void decode_frame(alac_file *alac,
         }
         case 20:
         case 32:
+#ifdef DEBUGALAC
+            fprintf(stderr,"ALAC: 32 bit sample\n");
+#endif
             fprintf(stderr, "FIXME: unimplemented sample size %i\n", alac->setinfo_sample_size);
             break;
         default:
@@ -1068,6 +1077,9 @@ void decode_frame(alac_file *alac,
         {
         case 16:
         {
+#ifdef DEBUGALAC
+            fprintf(stderr,"ALAC: 16 bit, 2 channels\n");
+#endif
             deinterlace_16(alac->outputsamples_buffer_a,
                            alac->outputsamples_buffer_b,
                            (int16_t*)outbuffer,
@@ -1079,6 +1091,9 @@ void decode_frame(alac_file *alac,
         }
         case 24:
         {
+#ifdef DEBUGALAC
+            fprintf(stderr,"ALAC: 24 bit, 2 channels\n");
+#endif
             deinterlace_24(alac->outputsamples_buffer_a,
                            alac->outputsamples_buffer_b,
                            uncompressed_bytes,
