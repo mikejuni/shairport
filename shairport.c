@@ -131,21 +131,25 @@ int main(int argc, char **argv)
     {
       strncpy(tAoDriver, arg+12, 55);
     }
-    else if(!strncmp(arg, "--alsa_device=",14 ))
+    else if(!strncmp(arg, "--alsa_pcm=",11 ))
     {
-      strncpy(tAoDriver, arg+14, 55);
+      strncpy(tAoDriver, arg+11, 55);
     }
     else if(!strncmp(arg, "--ao_devicename=",16 ))
     {
       strncpy(tAoDeviceName, arg+16, 55);
     }
-    else if(!strncmp(arg, "--alsa_output=",14 ))
+    else if(!strncmp(arg, "--alsa_volume=",14 ))
     {
       strncpy(tAoDeviceName, arg+14, 55);
     }
     else if(!strncmp(arg, "--ao_deviceid=",14 ))
     {
       strncpy(tAoDeviceId, arg+14, 55);
+    }
+    else if(!strncmp(arg, "--alsa_ctl=",11 ))
+    {
+      strncpy(tAoDeviceId, arg+11, 55);
     }
     else if(!strncmp(arg, "--apname=", 9))
     {
@@ -207,18 +211,24 @@ int main(int argc, char **argv)
     {
       slog(LOG_INFO, "ShairPort version 0.05 C port - Airport Express emulator\n");
       slog(LOG_INFO, "Usage:\nshairport [OPTION...]\n\nOptions:\n");
-      slog(LOG_INFO, "  -a, --apname=AirPort    Sets Airport name\n");
-      slog(LOG_INFO, "  -p, --password=secret   Sets Password (not working)\n");
-      slog(LOG_INFO, "  -o, --server_port=5002  Sets Port for Avahi/dns-sd/howl\n");
-      slog(LOG_INFO, "  -b, --buffer=282        Sets Number of frames to buffer before beginning playback\n");
-      slog(LOG_INFO, "  --ao_driver             Sets libao driver (if using libao)\n");
-      slog(LOG_INFO, "  --ao_devicename         Sets libao device name (if using libao)\n");
-      slog(LOG_INFO, "  --ao_deviceid           Sets libao device ID (if using libao)\n");
-      slog(LOG_INFO, "  --alsa_device           Sets ALSA PCM device (if using alsa, can be found by aplay -L)\n");
-      slog(LOG_INFO, "  --alsa_output           Sets ALSA Mixer output device (if using alsa, can be found by alsamixer)\n");
-      slog(LOG_INFO, "  -d                      Daemon mode\n");
-      slog(LOG_INFO, "  -q, --quiet             Supresses all output.\n");
-      slog(LOG_INFO, "  -v,-v2,-v3,-vv          Various debugging levels\n");
+      slog(LOG_INFO, "  -a, --apname=AirPort                  Sets Airport name\n");
+      slog(LOG_INFO, "  -p, --password=secret                 Sets Password (not working)\n");
+      slog(LOG_INFO, "  -o, --server_port=5002                Sets Port for Avahi/dns-sd/howl\n");
+      slog(LOG_INFO, "  -b, --buffer=282                      Sets Number of frames to buffer before beginning playback\n");
+#ifndef ALSA
+      slog(LOG_INFO, "  --ao_driver=<driver>                  Sets libao driver\n");
+      slog(LOG_INFO, "  --ao_devicename=<devicename>          Sets libao device name\n");
+      slog(LOG_INFO, "  --ao_deviceid=<deviceid>              Sets libao device ID\n");
+#else
+      slog(LOG_INFO, "  --alsa_pcm=<ALSA PCM Device>          Sets ALSA PCM device (Can be found by aplay -L)\n");
+#endif
+#ifdef USE_ALSA_VOLUME
+      slog(LOG_INFO, "  --alsa_volume=<ALSA Volume Output>    Sets ALSA Mixer output device (Can be found by alsamixer)\n");
+      slog(LOG_INFO, "  --alsa_ctl=<ALSA Mixer Control>       Sets ALSA Control device (Can be found by alsamixer)\n");
+#endif
+      slog(LOG_INFO, "  -d                                    Daemon mode\n");
+      slog(LOG_INFO, "  -q, --quiet                           Supresses all output.\n");
+      slog(LOG_INFO, "  -v,-v2,-v3,-vv                        Various debugging levels\n");
       slog(LOG_INFO, "\n");
       return 0;
     }    

@@ -8,7 +8,6 @@
 static snd_pcm_t *alsa_handle = NULL;
 static snd_pcm_hw_params_t *alsa_params = NULL;
 static char* DEFAULT_CARD = "default";
-static char* DEFAULT_MIXER = "Master";
 
 static char* g_card = NULL;
 #ifdef USE_ALSA_VOLUME
@@ -18,6 +17,8 @@ static snd_mixer_elem_t *volume_handle = NULL;
 static long g_vol_max, g_vol_min;
 static long g_prev_vol = 0;
 static char* g_mixer = NULL;
+static char* g_ctl = NULL;
+static char* DEFAULT_MIXER = "Master";
 #endif
 
 void audio_set_driver(char* driver) {
@@ -45,7 +46,17 @@ void audio_set_device_name(char* device_name) {
 }
 
 void audio_set_device_id(char* device_id) {
+#ifdef USE_ALSA_VOLUME
+    if (strlen(device_id)!=0)
+    {
+        g_ctl=device_id;
+    } else {
+	g_ctl=DEFAULT_CARD;
+    }
+    fprintf(stderr, "ALSA: audio_set_device_id: this sets the mixer control device to :%s\n",g_ctl);
+#else
     fprintf(stderr, "ALSA: audio_set_device_id: not supported with alsa :%s\n",device_id);
+#endif
 }
 
 char* audio_get_driver(void)
@@ -107,7 +118,7 @@ void* audio_init(int sampling_rate)
 #ifdef USE_ALSA_VOLUME
     fprintf(stderr,"ALSA: Use ALSA Mixer rather than soft manupulating volume\n");
     snd_mixer_open(&mixer_handle, 0);
-    snd_mixer_attach(mixer_handle, g_card);
+    snd_mixer_attach(mixer_handle, g_ctl);
     snd_mixer_selem_register(mixer_handle,NULL,NULL);
     snd_mixer_load(mixer_handle);
     snd_mixer_selem_id_alloca(&mixer_master);

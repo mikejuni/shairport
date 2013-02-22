@@ -39,7 +39,7 @@ char* audio_get_device_id(void)
     return libao_deviceid;
 }
 
-void audio_play(char* outbuf, int samples, void* priv_data)
+inline void audio_play(char* outbuf, int samples, void* priv_data)
 {
     ao_device* dev = priv_data;
     ao_play(dev, outbuf, samples*4);
