@@ -13,15 +13,21 @@ static char *libao_devicename = NULL;
 static char *libao_deviceid = NULL; // ao_options expects "char*"
 
 void audio_set_driver(char* driver) {
-    libao_driver = driver;
+    if (strlen(driver)!=0){
+        libao_driver = driver;
+    }
 }
 
 void audio_set_device_name(char* device_name) {
-    libao_devicename = device_name;
+    if (strlen(device_name)!=0){
+        libao_devicename = device_name;
+    }
 }
 
 void audio_set_device_id(char* device_id) {
-    libao_deviceid = device_id;
+    if (strlen(device_id)!=0){
+        libao_deviceid = device_id;
+    }
 }
 
 char* audio_get_driver(void)
