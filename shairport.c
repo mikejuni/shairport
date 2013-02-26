@@ -90,6 +90,9 @@ static void handle_sigchld(int signo) {
 char tAoDriver[56] = "";
 char tAoDeviceName[56] = "";
 char tAoDeviceId[56] = "";
+char tAlsaCtl[56] = "";
+char tAlsaVol[56] = "";
+
 
 int main(int argc, char **argv)
 {
@@ -141,7 +144,7 @@ int main(int argc, char **argv)
     }
     else if(!strncmp(arg, "--alsa_volume=",14 ))
     {
-      strncpy(tAoDeviceName, arg+14, 55);
+      strncpy(tAlsaVol, arg+14, 55);
     }
     else if(!strncmp(arg, "--ao_deviceid=",14 ))
     {
@@ -149,7 +152,7 @@ int main(int argc, char **argv)
     }
     else if(!strncmp(arg, "--alsa_ctl=",11 ))
     {
-      strncpy(tAoDeviceId, arg+11, 55);
+      strncpy(tAlsaCtl, arg+11, 55);
     }
     else if(!strncmp(arg, "--apname=", 9))
     {
@@ -844,7 +847,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       cleanupBuffers(pConn);
       hairtunes_init(tKeys->aeskey, tKeys->aesiv, tKeys->fmt, tControlport, tTimingport,
                       tDataport, tRtp, tPipe, tAoDriver, tAoDeviceName, tAoDeviceId,
-                      bufferStartFill);
+                      tAlsaCtl, tAlsaVol, bufferStartFill);
 
       // Quit when finished.
       slog(LOG_DEBUG, "Returned from hairtunes init....returning -1, should close out this whole side of the fork\n");

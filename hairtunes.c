@@ -41,6 +41,7 @@
 #include "hairtunes.h"
 #include <sys/signal.h>
 #include <fcntl.h>
+#include "vol.h"
 
 #ifdef FANCY_RESAMPLING
 #include <samplerate.h>
@@ -162,7 +163,7 @@ static int init_decoder(void) {
 
 int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, int pTimingPort,
          int pDataPort, char *pRtpHost, char*pPipeName, char *pLibaoDriver, char *pLibaoDeviceName, char *pLibaoDeviceId,
-         int bufStartFill)
+         char* pAlsaCtl, char* pAlsaVol, int bufStartFill)
 {
     if(pAeskey != NULL)    
         memcpy(aeskey, pAeskey, sizeof(aeskey));
@@ -178,6 +179,7 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
         audio_set_device_name(pLibaoDeviceName);
     if(pLibaoDeviceId != NULL)
         audio_set_device_id(pLibaoDeviceId);
+    set_volume_param(pAlsaCtl, pAlsaVol);
     
     controlport = pCtrlPort;
     timingport = pTimingPort;
@@ -220,7 +222,7 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
             pthread_mutex_lock(&vol_mutex);
             volume = pow(10.0,0.05*f);
             fix_volume = 65536.0 * volume;
-            audio_set_volume(f);
+            set_volume(f);
             pthread_mutex_unlock(&vol_mutex);
             continue;
         }
@@ -878,6 +880,7 @@ static int init_output(void) {
         init_pipe(pipename);
     } else {
         arg = audio_init(sampling_rate);
+        init_volume_ctl();
     }
 
 #ifdef FANCY_RESAMPLING
@@ -896,4 +899,5 @@ static int init_output(void) {
 
 static void deinit_output(void) {
     audio_deinit();
+    deinit_volume_ctl();
 }
