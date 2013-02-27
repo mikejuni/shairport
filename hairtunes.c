@@ -61,10 +61,6 @@
 #define MAX_PACKET      2048
 
 typedef unsigned short seq_t;
-// Try to fight delay
-static struct timespec buf_delay={0}, buf_delay_remaining={0}; 
-static long delay_nanosec;
-static int g_samples=0;
 
 // global options (constant after init)
 static unsigned char aeskey[16], aesiv[16];
@@ -188,9 +184,6 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
     set_volume_param(pAlsaCtl, pAlsaVol);
     
 // Initiate delay timestamp
-    buf_delay.tv_sec=0;
-    delay_nanosec=PACKET_DELAY;
-    buf_delay.tv_nsec=delay_nanosec;
     
     controlport = pCtrlPort;
     timingport = pTimingPort;
@@ -413,19 +406,9 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
     }
     pthread_mutex_unlock(&ab_mutex);
 
-/*
-    if (buf_fill > 400)
-    {
-  
-        delay_nanosec=(long)g_samples*22676L;
 #ifdef DEBUGBUFWRITE
-    fprintf(stderr,"BUFFER_PUT_PACKET: buf_fill:%d, delay:%ld\n",buf_fill, delay_nanosec);
+    fprintf(stderr,"BUFFER_PUT_PACKET: buf_fill:%d\n",buf_fill);
 #endif
-        buf_delay.tv_sec=0;
-        buf_delay.tv_nsec=delay_nanosec;
-        nanosleep(&buf_delay, &buf_delay_remaining);
-    }
-*/
 }
 
 static int rtp_sockets[2];  // data, control
@@ -878,7 +861,6 @@ static void *audio_thread_func(void *arg) {
             }
         } else {
             audio_play((char *)outbuf, play_samples, arg);
-            g_samples=play_samples;
         }
     }
 
