@@ -386,6 +386,10 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
     buf_fill = ab_write - ab_read;
     pthread_mutex_unlock(&ab_mutex);
 
+#ifdef DEBUGBUFWRITE
+    fprintf(stderr,"BUFFER_PUT_PACKET: buf_fill %d\n",buf_fill);
+#endif
+
     if (abuf) {
         alac_decode(abuf->data, data, len);
         abuf->ready = 1;
@@ -747,18 +751,10 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     }
 
     pthread_mutex_lock(&vol_mutex);
-/*
-#ifdef USE_ALSA_VOLUME
-    memcpy(outptr,inptr,sizeof(short)*frame_size);
-#else
-*/
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
-/*
-#endif
-*/
     if (stuff) {
         if (stuff==1) {
 #ifdef DEBUGSTUFF
