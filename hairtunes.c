@@ -53,6 +53,7 @@
 #include "alac.h"
 #include "audio.h"
 #include "common.h"
+#include "audio_common.h"
 
 // and how full it needs to be to begin (must be <BUFFER_FRAMES)
 #define START_FILL    282
@@ -60,6 +61,10 @@
 #define MAX_PACKET      2048
 
 typedef unsigned short seq_t;
+// Try to fight delay
+static struct timespec buf_delay={0}, buf_delay_remaining={0}; 
+static long delay_nanosec;
+static int g_samples=0;
 
 // global options (constant after init)
 static unsigned char aeskey[16], aesiv[16];
@@ -107,7 +112,8 @@ typedef struct audio_buffer_entry {   // decoded audio packets
     int ready;
     signed short *data;
 } abuf_t;
-static abuf_t audio_buffer[BUFFER_FRAMES];
+//static abuf_t audio_buffer[BUFFER_FRAMES];
+static abuf_t *audio_buffer;
 #define BUFIDX(seqno) ((seq_t)(seqno) % BUFFER_FRAMES)
 
 // mutex-protected variables
@@ -180,6 +186,11 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
     if(pLibaoDeviceId != NULL)
         audio_set_device_id(pLibaoDeviceId);
     set_volume_param(pAlsaCtl, pAlsaVol);
+    
+// Initiate delay timestamp
+    buf_delay.tv_sec=0;
+    delay_nanosec=PACKET_DELAY;
+    buf_delay.tv_nsec=delay_nanosec;
     
     controlport = pCtrlPort;
     timingport = pTimingPort;
@@ -323,6 +334,8 @@ int main(int argc, char **argv) {
 #endif
 
 static void init_buffer(void) {
+    fprintf(stderr,"INIT_BUFFER: Initiating memory\n");
+    audio_buffer=malloc(sizeof(abuf_t)*BUFFER_FRAMES);
     int i;
     for (i=0; i<BUFFER_FRAMES; i++)
         audio_buffer[i].data = malloc(OUTFRAME_BYTES);
@@ -386,9 +399,7 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
     buf_fill = ab_write - ab_read;
     pthread_mutex_unlock(&ab_mutex);
 
-#ifdef DEBUGBUFWRITE
-    fprintf(stderr,"BUFFER_PUT_PACKET: buf_fill %d\n",buf_fill);
-#endif
+
 
     if (abuf) {
         alac_decode(abuf->data, data, len);
@@ -401,6 +412,20 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
         pthread_cond_signal(&ab_buffer_ready);
     }
     pthread_mutex_unlock(&ab_mutex);
+
+/*
+    if (buf_fill > 400)
+    {
+  
+        delay_nanosec=(long)g_samples*22676L;
+#ifdef DEBUGBUFWRITE
+    fprintf(stderr,"BUFFER_PUT_PACKET: buf_fill:%d, delay:%ld\n",buf_fill, delay_nanosec);
+#endif
+        buf_delay.tv_sec=0;
+        buf_delay.tv_nsec=delay_nanosec;
+        nanosleep(&buf_delay, &buf_delay_remaining);
+    }
+*/
 }
 
 static int rtp_sockets[2];  // data, control
@@ -492,6 +517,7 @@ static void rtp_request_resend(seq_t first, seq_t last) {
     rtp_client.sin_port = htons(controlport);
 #endif
     sendto(rtp_sockets[1], req, sizeof(req), 0, (struct sockaddr *)&rtp_client, sizeof(rtp_client));
+
 }
 
 
@@ -852,6 +878,7 @@ static void *audio_thread_func(void *arg) {
             }
         } else {
             audio_play((char *)outbuf, play_samples, arg);
+            g_samples=play_samples;
         }
     }
 
