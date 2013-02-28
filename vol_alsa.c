@@ -69,7 +69,7 @@ void set_volume(double vol)
 #endif
     if (cur_vol!=g_prev_vol)
     {
-#ifdef DEBUGALSA
+#ifdef DEBUGALSAVOL
         fprintf(stderr,"ALSA: Calling function to set volume\n");
 #endif
     	snd_mixer_selem_set_playback_volume_all(volume_handle,cur_vol);

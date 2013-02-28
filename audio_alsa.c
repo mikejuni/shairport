@@ -52,9 +52,11 @@ inline void audio_play(char* outbuf, int samples, void* priv_data)
 #endif
     int err = snd_pcm_writei(alsa_handle, outbuf, samples);
     if (err < 0)
+    {
         err = snd_pcm_recover(alsa_handle, err, 0);
-    if (err < 0)
-        fprintf(stderr, "snd_pcm_writei failed: %s\n", snd_strerror(err));
+        if (err < 0)
+            fprintf(stderr, "snd_pcm_writei failed: %s\n", snd_strerror(err));
+    }
 }
 
 void* audio_init(int sampling_rate)

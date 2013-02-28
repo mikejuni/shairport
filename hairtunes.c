@@ -763,35 +763,37 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     int i;
     int stuffsamp = frame_size;
     int stuff = 0;
-    double p_stuff;
 
+#ifdef DISABLESTUFF
+    stuff=0;
+#else
+    double p_stuff;
     p_stuff = 1.0 - pow(1.0 - fabs(playback_rate-1.0), frame_size);
-#ifdef DEBUGSTUFF
-    fprintf(stderr,"STUFF: playback rate: %f, stuff: %f\n",playback_rate,p_stuff);
-#endif
 
     if (rand() < p_stuff * RAND_MAX) {
         stuff = playback_rate > 1.0 ? -1 : 1;
         stuffsamp = rand() % (frame_size - 1);
     }
+#endif
+
+#ifdef DEBUGSTUFF
+    slog(LOG_DEBUG_VV,"STUFF: Stuffing playback rate %f\n", playback_rate);
+#endif
 
 #ifdef USE_ALSA_VOLUME
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = *inptr++;
         *outptr++ = *inptr++;
     };
+#ifndef DISABLESTUFF
     if (stuff) {
         if (stuff==1) {
-#ifdef DEBUGSTUFF
-            fprintf(stderr, "+++++++++\n");
-#endif
+            fprintf(stderr, "STUFF: +++++++++\n");
             // interpolate one sample
             *outptr++ = ((long)inptr[-2] + (long)inptr[0]) >> 1;
             *outptr++ = ((long)inptr[-1] + (long)inptr[1]) >> 1;
         } else if (stuff==-1) {
-#ifdef DEBUGSTUFF
-            fprintf(stderr, "---------\n");
-#endif
+            fprintf(stderr, "STUFF: ---------\n");
             inptr++;
             inptr++;
         }
@@ -800,24 +802,22 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
             *outptr++ = *inptr++;
         }
     }
+#endif
 #else
     pthread_mutex_lock(&vol_mutex);
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
         *outptr++ = dithered_vol(*inptr++);
     };
+#ifndef DISABLESTUFF
     if (stuff) {
         if (stuff==1) {
-#ifdef DEBUGSTUFF
             fprintf(stderr, "+++++++++\n");
-#endif
             // interpolate one sample
             *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
             *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
         } else if (stuff==-1) {
-#ifdef DEBUGSTUFF
             fprintf(stderr, "---------\n");
-#endif
             inptr++;
             inptr++;
         }
@@ -827,6 +827,7 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
         }
     }
     pthread_mutex_unlock(&vol_mutex);
+#endif
 #endif
 
     return frame_size + stuff;

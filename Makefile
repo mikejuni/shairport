@@ -1,6 +1,7 @@
-CFLAGS+=-Wall $(shell pkg-config --cflags openssl) 
+CFLAGS+=-Wall $(shell pkg-config --cflags openssl) -DDISABLESTUFF
 #DEBUGCFLAGS+=-DDEBUGCTL -DDEBUGSTUFF -DDEBUGALSA -DDDEBUGALAC -DDEBUGALSAVOL -DDEBUGBUFWRITE -g
 #DEBUGCFLAGS+=-DDEBUGBUFWRITE -g
+#DEBUGCFLAGS+=-DDEBUGSTUFF
 USE:=alsa
 USE_ALSA_VOLUME:=1
 LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
