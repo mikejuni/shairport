@@ -2,6 +2,7 @@
 #include <alsa/asoundlib.h>
 #include <math.h>
 #include "vol.h"
+#include <stdarg.h>
 
 static char* DEFAULT_CARD = "default";
 static snd_mixer_t *mixer_handle = NULL;
@@ -13,8 +14,15 @@ static char* g_mixer = NULL;
 static char* g_ctl = NULL;
 static char* DEFAULT_MIXER = "Master";
 
-void set_volume_param(char* ctl, char* mixer)
+void set_volume_param(char* params, ...)
 {
+    char* ctl;
+    char* mixer;
+    va_list arguments;
+    ctl=params;
+    va_start (arguments, params);
+    mixer=va_arg(arguments, char*);
+    va_end (arguments);
     if (ctl!=NULL && strlen(ctl)!=0)
         g_ctl=ctl;
     else

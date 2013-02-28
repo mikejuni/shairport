@@ -46,19 +46,15 @@ char* audio_get_device_id(void)
 
 inline void audio_play(char* outbuf, int samples, void* priv_data)
 {
-    snd_pcm_sframes_t avail=snd_pcm_avail (alsa_handle);
 #ifdef DEBUGALSA
-    fprintf (stderr,"AUDIO_PLAY: Available buffer in ALSA:%d, Sample size %d\n",(int)avail,samples);
+    snd_pcm_sframes_t avail=snd_pcm_avail (alsa_handle);
+    slog (LOG_DEBUG_VV,"AUDIO_PLAY: Available buffer in ALSA:%d, Sample size %d\n",(int)avail,samples);
 #endif
-    avail=1000;
-    if (avail > samples)
-    {
     int err = snd_pcm_writei(alsa_handle, outbuf, samples);
     if (err < 0)
         err = snd_pcm_recover(alsa_handle, err, 0);
     if (err < 0)
         fprintf(stderr, "snd_pcm_writei failed: %s\n", snd_strerror(err));
-    }
 }
 
 void* audio_init(int sampling_rate)
@@ -95,6 +91,7 @@ void* audio_init(int sampling_rate)
 
 void audio_deinit(void)
 {
+    slog(LOG_INFO,"ALSA: Deinitiating PCM handles\n");
     if (alsa_handle) {
         snd_pcm_drain(alsa_handle);
         snd_pcm_close(alsa_handle);

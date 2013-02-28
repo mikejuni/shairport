@@ -6,7 +6,7 @@ USE_ALSA_VOLUME:=1
 LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
 USECFLAGS:=$(shell pkg-config --cflags $(USE))
 USELDFLAGS:=$(shell pkg-config --libs $(USE))
-USEOBJS=socketlib.o shairport.o alac.o hairtunes.o audio_$(USE).o audio_common.o vol_alsa.o
+USEOBJS=socketlib.o shairport.o alac.o hairtunes.o audio_$(USE).o vol_alsa.o common.o
 ifeq ($(USE_ALSA_VOLUME),1)	
 	CFLAGS+=-DUSE_ALSA_VOLUME
 endif

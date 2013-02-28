@@ -29,13 +29,16 @@
 #include "socketlib.h"
 #include "shairport.h"
 #include "hairtunes.h"
+#include "common.h"
 
+/*
 #ifndef TRUE
 #define TRUE (-1)
 #endif
 #ifndef FALSE
 #define FALSE (0)
 #endif
+*/
 
 // TEMP
 
@@ -47,10 +50,12 @@ int bufferStartFill = -1;
 #else
 #define DEVNULL "/dev/null"
 #endif
+/*
 #define RSA_LOG_LEVEL LOG_DEBUG_VV
 #define SOCKET_LOG_LEVEL LOG_DEBUG_VV
 #define HEADER_LOG_LEVEL LOG_DEBUG
 #define AVAHI_LOG_LEVEL LOG_DEBUG
+*/
 
 static void handleClient(int pSock, char *pPassword, char *pHWADDR);
 static void writeDataToClient(int pSock, struct shairbuffer *pResponse);
@@ -71,8 +76,10 @@ static void addNToShairBuffer(struct shairbuffer *pBuf, char *pNewBuf, int pNofN
 static char *getTrimmedMalloc(char *pChar, int pSize, int pEndStr, int pAddNL);
 static char *getTrimmed(char *pChar, int pSize, int pEndStr, int pAddNL, char *pTrimDest);
 
+/*
 static void slog(int pLevel, char *pFormat, ...);
 static int isLogEnabledFor(int pLevel);
+*/
 
 static void initConnection(struct connection *pConn, struct keyring *pKeys, struct comms *pComms, int pSocket, char *pPassword);
 static void closePipe(int *pPipe);
@@ -243,9 +250,13 @@ int main(int argc, char **argv)
     }    
   }
 
-  if ( bufferStartFill < 30 || bufferStartFill > get_buffer_frames() ) {
+  if ( (bufferStartFill >= 0 && bufferStartFill < 30) || bufferStartFill > get_buffer_frames() ) {
      fprintf(stderr, "buffer value must be > 30 and < %d\n", get_buffer_frames());
      return(0);
+  }
+  if (bufferStartFill < 0)
+  {
+     slog(LOG_INFO, "Using default start threashold\n");
   }
 
   if(tDaemonize)
@@ -699,15 +710,15 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     int tContentSize = atoi(tContent);
     if(pConn->recv.marker == 0 || strlen(pConn->recv.data+pConn->recv.marker) != tContentSize)
     {
-      if(isLogEnabledFor(HEADER_LOG_LEVEL))
-      {
+//      if(isLogEnabledFor(HEADER_LOG_LEVEL))
+//      {
         slog(HEADER_LOG_LEVEL, "Content-Length: %s value -> %d\n", tContent, tContentSize);
         if(pConn->recv.marker != 0)
         {
           slog(HEADER_LOG_LEVEL, "ContentPtr has %d, but needs %d\n", 
                   strlen(pConn->recv.data+pConn->recv.marker), tContentSize);
         }
-      }
+//      }
       // check if value in tContent > 2nd read from client.
       return 1; // means more content-length needed
     }
@@ -720,15 +731,15 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
   // "Creates" a new Response Header for our response message
   addToShairBuffer(&(pConn->resp), "RTSP/1.0 200 OK\r\n");
 
-  if(isLogEnabledFor(LOG_INFO))
-  {
+//  if(isLogEnabledFor(LOG_INFO))
+//  {
     int tLen = strchr(pConn->recv.data, ' ') - pConn->recv.data;
     if(tLen < 0 || tLen > 20)
     {
       tLen = 20;
     }
     slog(LOG_INFO, "********** RECV %.*s **********\n", tLen, pConn->recv.data);
-  }
+//  }
 
   if(pConn->password != NULL)
   {
@@ -1112,6 +1123,7 @@ static char *getTrimmed(char *pChar, int pSize, int pEndStr, int pAddNL, char *p
   return pTrimDest;
 }
 
+/*
 static void slog(int pLevel, char *pFormat, ...)
 {
   #ifdef SHAIRPORT_LOG
@@ -1133,6 +1145,7 @@ static int isLogEnabledFor(int pLevel)
   }
   return FALSE;
 }
+*/
 
 static void initConnection(struct connection *pConn, struct keyring *pKeys,
                     struct comms *pComms, int pSocket, char *pPassword)

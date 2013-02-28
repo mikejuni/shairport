@@ -53,7 +53,7 @@
 #include "alac.h"
 #include "audio.h"
 #include "common.h"
-#include "audio_common.h"
+//#include "audio_common.h"
 
 // and how full it needs to be to begin (must be <BUFFER_FRAMES)
 #define START_FILL    282
@@ -233,7 +233,7 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
         if (sscanf(line, "vol: %lf\n", &f)) {
             assert(f<=0);
 #ifdef DEBUGCTL
-            fprintf(stderr, "VOL: %lf\n", f);
+            slog(LOG_DEBUG_VV, "VOL: %lf\n", f);
 #endif
             pthread_mutex_lock(&vol_mutex);
             volume = pow(10.0,0.05*f);
@@ -250,7 +250,7 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
             ab_resync();
             pthread_mutex_unlock(&ab_mutex);
 #ifdef DEBUGCTL
-            fprintf(stderr, "FLUSH\n");
+            slog(LOG_DEBUG_VV, "FLUSH\n");
 #endif
         }
     }
