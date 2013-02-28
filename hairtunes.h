@@ -6,6 +6,8 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
 
 // default buffer size
 // needs to be a power of 2 because of the way BUFIDX(seqno) works
-#define BUFFER_FRAMES 1024
+//#define BUFFER_FRAMES 1024
 
+int get_buffer_frames();
+void set_buffer_frames(int);
 #endif 

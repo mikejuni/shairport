@@ -61,6 +61,7 @@
 #define MAX_PACKET      2048
 
 typedef unsigned short seq_t;
+static int g_buffer_frames=1024;
 
 // global options (constant after init)
 static unsigned char aeskey[16], aesiv[16];
@@ -110,7 +111,8 @@ typedef struct audio_buffer_entry {   // decoded audio packets
 } abuf_t;
 //static abuf_t audio_buffer[BUFFER_FRAMES];
 static abuf_t *audio_buffer;
-#define BUFIDX(seqno) ((seq_t)(seqno) % BUFFER_FRAMES)
+//#define BUFIDX(seqno) ((seq_t)(seqno) % BUFFER_FRAMES)
+#define BUFIDX(seqno) ((seq_t)(seqno) % g_buffer_frames)
 
 // mutex-protected variables
 static seq_t ab_read, ab_write;
@@ -132,6 +134,16 @@ static int hex2bin(unsigned char *buf, char *hex) {
     return 0;
 }
 #endif
+
+int get_buffer_frames()
+{
+    return g_buffer_frames;
+}
+
+void set_buffer_frames(int fsize)
+{
+    g_buffer_frames=fsize;
+}
 
 static int init_decoder(void) {
     alac_file *alac;
@@ -328,16 +340,16 @@ int main(int argc, char **argv) {
 
 static void init_buffer(void) {
     fprintf(stderr,"INIT_BUFFER: Initiating memory\n");
-    audio_buffer=malloc(sizeof(abuf_t)*BUFFER_FRAMES);
+    audio_buffer=malloc(sizeof(abuf_t)*g_buffer_frames);
     int i;
-    for (i=0; i<BUFFER_FRAMES; i++)
+    for (i=0; i<g_buffer_frames; i++)
         audio_buffer[i].data = malloc(OUTFRAME_BYTES);
     ab_resync();
 }
 
 static void ab_resync(void) {
     int i;
-    for (i=0; i<BUFFER_FRAMES; i++)
+    for (i=0; i<g_buffer_frames; i++)
         audio_buffer[i].ready = 0;
     ab_synced = 0;
     ab_buffering = 1;
@@ -711,7 +723,7 @@ static short *buffer_get_frame(void) {
 
         return 0;
     }
-    if (buf_fill >= BUFFER_FRAMES) {   // overrunning! uh-oh. restart at a sane distance
+    if (buf_fill >= g_buffer_frames) {   // overrunning! uh-oh. restart at a sane distance
         fprintf(stderr, "\noverrun.\n");
         ab_read = ab_write - buffer_start_fill;
     }

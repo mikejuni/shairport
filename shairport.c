@@ -185,6 +185,11 @@ int main(int argc, char **argv)
     {
       bufferStartFill = atoi(arg + 9);
     }
+    else if(!strncmp(arg, "--buffer_size=", 14))
+    {
+      int fsize = atoi(arg + 14);
+      set_buffer_frames(fsize);
+    }
     else if(!strcmp(arg, "-k"))
     {
       tUseKnownHWID = TRUE;
@@ -218,6 +223,7 @@ int main(int argc, char **argv)
       slog(LOG_INFO, "  -p, --password=secret                 Sets Password (not working)\n");
       slog(LOG_INFO, "  -o, --server_port=5002                Sets Port for Avahi/dns-sd/howl\n");
       slog(LOG_INFO, "  -b, --buffer=282                      Sets Number of frames to buffer before beginning playback\n");
+      slog(LOG_INFO, "  --buffer_size=1024                    Sets buffer size\n");
 #ifndef ALSA
       slog(LOG_INFO, "  --ao_driver=<driver>                  Sets libao driver\n");
       slog(LOG_INFO, "  --ao_devicename=<devicename>          Sets libao device name\n");
@@ -237,8 +243,8 @@ int main(int argc, char **argv)
     }    
   }
 
-  if ( bufferStartFill < 30 || bufferStartFill > BUFFER_FRAMES ) {
-     fprintf(stderr, "buffer value must be > 30 and < %d\n", BUFFER_FRAMES);
+  if ( bufferStartFill < 30 || bufferStartFill > get_buffer_frames() ) {
+     fprintf(stderr, "buffer value must be > 30 and < %d\n", get_buffer_frames());
      return(0);
   }
 
