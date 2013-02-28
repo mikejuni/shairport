@@ -99,9 +99,11 @@ static void ab_resync(void);
 
 // interthread variables
 // stdin->decoder
+#ifndef USE_ALSA_VOLUME
 static double volume = 1.0;
 static int fix_volume = 0x10000;
 static pthread_mutex_t vol_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 
 
@@ -235,11 +237,13 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
 #ifdef DEBUGCTL
             slog(LOG_DEBUG_VV, "VOL: %lf\n", f);
 #endif
+            set_volume(f);
+#ifndef USE_ALSA_VOLUME
             pthread_mutex_lock(&vol_mutex);
             volume = pow(10.0,0.05*f);
             fix_volume = 65536.0 * volume;
-            set_volume(f);
             pthread_mutex_unlock(&vol_mutex);
+#endif
             continue;
         }
         if (!strcmp(line, "exit\n")) {
@@ -771,6 +775,32 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
         stuffsamp = rand() % (frame_size - 1);
     }
 
+#ifdef USE_ALSA_VOLUME
+    for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
+        *outptr++ = *inptr++;
+        *outptr++ = *inptr++;
+    };
+    if (stuff) {
+        if (stuff==1) {
+#ifdef DEBUGSTUFF
+            fprintf(stderr, "+++++++++\n");
+#endif
+            // interpolate one sample
+            *outptr++ = ((long)inptr[-2] + (long)inptr[0]) >> 1;
+            *outptr++ = ((long)inptr[-1] + (long)inptr[1]) >> 1;
+        } else if (stuff==-1) {
+#ifdef DEBUGSTUFF
+            fprintf(stderr, "---------\n");
+#endif
+            inptr++;
+            inptr++;
+        }
+        for (i=stuffsamp; i<frame_size + stuff; i++) {
+            *outptr++ = *inptr++;
+            *outptr++ = *inptr++;
+        }
+    }
+#else
     pthread_mutex_lock(&vol_mutex);
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = dithered_vol(*inptr++);
@@ -797,6 +827,7 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
         }
     }
     pthread_mutex_unlock(&vol_mutex);
+#endif
 
     return frame_size + stuff;
 }
