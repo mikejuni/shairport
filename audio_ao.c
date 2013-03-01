@@ -8,9 +8,25 @@
 
 #define NUM_CHANNELS 2
 
-static char *libao_driver = NULL;
-static char *libao_devicename = NULL;
-static char *libao_deviceid = NULL; // ao_options expects "char*"
+static char libao_driver[56] = "";
+static char libao_devicename[56] = "";
+static char libao_deviceid[56] = ""; // ao_options expects "char*"
+
+void parse_audio_arg(char* arg)
+{
+      if (!strncmp(arg, "--ao_driver=",12))
+      {
+          strncpy(libao_driver,arg+12,55);
+      }
+      if (!strncmp(arg, "--ao_devicename=",16))
+      {
+          strncpy(libao_devicename,arg+16,55);
+      }
+      if (!strncmp(arg, "--ao_deviceid=",14))
+      {
+          strncpy(libao_deviceid,arg+14,55);
+      }
+}
 
 void print_audio_args()
 {
@@ -20,6 +36,7 @@ void print_audio_args()
 
 }
 
+/*
 void audio_set_driver(char* driver) {
     if (strlen(driver)!=0){
         libao_driver = driver;
@@ -52,6 +69,7 @@ char* audio_get_device_id(void)
 {
     return libao_deviceid;
 }
+*/
 
 inline void audio_play(char* outbuf, int samples, void* priv_data)
 {
@@ -63,7 +81,7 @@ void* audio_init(int sampling_rate)
     ao_initialize();
 
     int driver;
-    if (libao_driver) {
+    if (strlen(libao_driver)==0) {
         // if a libao driver is specified on the command line, use that
         driver = ao_driver_id(libao_driver);
         if (driver == -1) {
@@ -83,9 +101,9 @@ void* audio_init(int sampling_rate)
     fmt.byte_format = AO_FMT_NATIVE;
 
     ao_option *ao_opts = NULL;
-    if(libao_deviceid) {
+    if(strlen(libao_deviceid)!=0) {
         ao_append_option(&ao_opts, "id", libao_deviceid);
-    } else if(libao_devicename){
+    } else if(strlen(libao_devicename)!=0){
         ao_append_option(&ao_opts, "dev", libao_devicename);
         // Old libao versions (for example, 0.8.8) only support
         // "dsp" instead of "dev".

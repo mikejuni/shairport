@@ -82,7 +82,7 @@ char tPidFile[255] = "/var/run/shairport.pid";
 static void handle_sigterm(int signo) {
     if (g_avahi_pid>0)
     {
-        syslog(LOG_DEBUG,"SIGTERM caught, killing avahi-publish-service (%d) before exit\n", g_avahi_pid);
+        syslog(LOG_INFO,"SIGTERM caught, killing avahi-publish-service (%d) before exit\n", g_avahi_pid);
         kill(g_avahi_pid, SIGTERM);
     }
     int pid=0;
@@ -111,8 +111,10 @@ static void handle_sigterm(int signo) {
 char tAoDriver[56] = "";
 char tAoDeviceName[56] = "";
 char tAoDeviceId[56] = "";
+/*
 char tAlsaCtl[56] = "";
 char tAlsaVol[56] = "";
+*/
 
 
 int main(int argc, char **argv)
@@ -168,30 +170,36 @@ int main(int argc, char **argv)
     {
       strncpy(tServerName, arg+9, 55);
     }
+/*
     else if(!strncmp(arg, "--ao_driver=",12 ))
     {
       strncpy(tAoDriver, arg+12, 55);
     }
+*/
 /*
     else if(!strncmp(arg, "--alsa_pcm=",11 ))
     {
       strncpy(tAoDriver, arg+11, 55);
     }
 */
+/*
     else if(!strncmp(arg, "--ao_devicename=",16 ))
     {
       strncpy(tAoDeviceName, arg+16, 55);
     }
+*/
 /*
     else if(!strncmp(arg, "--alsa_volume=",14 ))
     {
       strncpy(tAlsaVol, arg+14, 55);
     }
 */
+/*
     else if(!strncmp(arg, "--ao_deviceid=",14 ))
     {
       strncpy(tAoDeviceId, arg+14, 55);
     }
+*/
 /*
     else if(!strncmp(arg, "--alsa_ctl=",11 ))
     {
@@ -347,10 +355,10 @@ int main(int argc, char **argv)
   }
   //tPrintHWID[HWID_SIZE] = '\0';
 
-  syslog(LOG_INFO, "LogLevel: %d\n", tLogLvl);
+  syslog(LOG_DEBUG, "LogLevel: %d\n", tLogLvl);
   syslog(LOG_INFO, "AirName: %s\n", tServerName);
-  syslog(LOG_INFO, "HWID: %.*s\n", HWID_SIZE, tHWID+1);
-  syslog(LOG_INFO, "HWID_Hex(%d): %s\n", (int)strlen(tHWID_Hex), tHWID_Hex);
+  syslog(LOG_DEBUG, "HWID: %.*s\n", HWID_SIZE, tHWID+1);
+  syslog(LOG_DEBUG, "HWID_Hex(%d): %s\n", (int)strlen(tHWID_Hex), tHWID_Hex);
 
   if(tSimLevel >= 1)
   {
@@ -362,19 +370,19 @@ int main(int argc, char **argv)
   else
   {
     g_avahi_pid=startAvahi(tHWID_Hex, tServerName, tPort);
-    syslog(LOG_DEBUG, "Starting connection server: specified server port: %d\n", tPort);
+    syslog(LOG_INFO, "Starting connection server: specified server port: %d\n", tPort);
     int tServerSock = setupListenServer(&tAddrInfo, tPort);
     if(tServerSock < 0)
     {
       freeaddrinfo(tAddrInfo);
-      syslog(LOG_INFO, "Error setting up server socket on port %d, try specifying a different port\n", tPort);
+      syslog(LOG_ERR, "Error setting up server socket on port %d, try specifying a different port\n", tPort);
       exit(1);
     }
 
     int tClientSock = 0;
     while(1)
     {
-      syslog(LOG_DEBUG, "Waiting for clients to connect\n");
+      syslog(LOG_INFO, "Waiting for clients to connect\n");
       tClientSock = acceptClient(tServerSock, tAddrInfo);
       if(tClientSock > 0)
       {
@@ -452,7 +460,6 @@ static int findEnd(char *tReadBuf)
 
 static void handleClient(int pSock, char *pPassword, char *pHWADDR)
 {
-  syslog(LOG_DEBUG, "In Handle Client\n");
   fflush(stdout);
 
   socklen_t len;
@@ -754,15 +761,12 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     int tContentSize = atoi(tContent);
     if(pConn->recv.marker == 0 || strlen(pConn->recv.data+pConn->recv.marker) != tContentSize)
     {
-//      if(isLogEnabledFor(HEADER_LOG_LEVEL))
-//      {
-        syslog(HEADER_LOG_LEVEL, "Content-Length: %s value -> %d\n", tContent, tContentSize);
-        if(pConn->recv.marker != 0)
-        {
-          syslog(HEADER_LOG_LEVEL, "ContentPtr has %d, but needs %d\n", 
-                  (int)strlen(pConn->recv.data+pConn->recv.marker), tContentSize);
-        }
-//      }
+      syslog(HEADER_LOG_LEVEL, "Content-Length: %s value -> %d\n", tContent, tContentSize);
+      if(pConn->recv.marker != 0)
+      {
+        syslog(HEADER_LOG_LEVEL, "ContentPtr has %d, but needs %d\n", 
+                (int)strlen(pConn->recv.data+pConn->recv.marker), tContentSize);
+      }
       // check if value in tContent > 2nd read from client.
       return 1; // means more content-length needed
     }
@@ -775,15 +779,12 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
   // "Creates" a new Response Header for our response message
   addToShairBuffer(&(pConn->resp), "RTSP/1.0 200 OK\r\n");
 
-//  if(isLogEnabledFor(LOG_INFO))
-//  {
-    int tLen = strchr(pConn->recv.data, ' ') - pConn->recv.data;
-    if(tLen < 0 || tLen > 20)
-    {
-      tLen = 20;
-    }
-    syslog(LOG_INFO, "********** RECV %.*s **********\n", tLen, pConn->recv.data);
-//  }
+  int tLen = strchr(pConn->recv.data, ' ') - pConn->recv.data;
+  if(tLen < 0 || tLen > 20)
+  {
+    tLen = 20;
+  }
+  syslog(LOG_INFO, "********** RECV %.*s **********\n", tLen, pConn->recv.data);
 
   if(pConn->password != NULL)
   {
@@ -907,8 +908,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       }
       cleanupBuffers(pConn);
       hairtunes_init(tKeys->aeskey, tKeys->aesiv, tKeys->fmt, tControlport, tTimingport,
-                      tDataport, tRtp, tPipe, tAoDriver, tAoDeviceName, tAoDeviceId,
-                      tAlsaCtl, tAlsaVol, bufferStartFill);
+                      tDataport, tRtp, tPipe,  bufferStartFill);
 
       // Quit when finished.
       syslog(LOG_DEBUG, "Returned from hairtunes init....returning -1, should close out this whole side of the fork\n");
@@ -924,7 +924,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       int tRead = read(tComms->out[0], tFromHairtunes, 80);
       if(tRead <= 0)
       {
-        syslog(LOG_INFO, "Error reading port from hairtunes function, assuming default port: %s\n", tPort);
+        syslog(LOG_ERR, "Error reading port from hairtunes function, assuming default port: %s\n", tPort);
       }
       else
       {
@@ -936,7 +936,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
         }
         else
         {
-          syslog(LOG_INFO, "Read %d bytes, Error translating %s into a port\n", tRead, tFromHairtunes);
+          syslog(LOG_ERR, "Read %d bytes, Error translating %s into a port\n", tRead, tFromHairtunes);
         }
       }
       //  READ Ports from here?close(pConn->hairtunes_pipes[0]);
@@ -952,7 +952,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     }
     else
     {
-      syslog(LOG_INFO, "Error forking process....dere' be errors round here.\n");
+      syslog(LOG_ERR, "Error forking process....dere' be errors round here.\n");
       return -1;
     }
   }

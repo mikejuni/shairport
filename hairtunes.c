@@ -178,8 +178,7 @@ static int init_decoder(void) {
 }
 
 int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, int pTimingPort,
-         int pDataPort, char *pRtpHost, char*pPipeName, char *pLibaoDriver, char *pLibaoDeviceName, char *pLibaoDeviceId,
-         char* pAlsaCtl, char* pAlsaVol, int bufStartFill)
+         int pDataPort, char *pRtpHost, char*pPipeName, int bufStartFill)
 {
     if(pAeskey != NULL)    
         memcpy(aeskey, pAeskey, sizeof(aeskey));
@@ -345,7 +344,6 @@ int main(int argc, char **argv) {
 #endif
 
 static void init_buffer(void) {
-    syslog(LOG_DEBUG,"INIT_BUFFER: Initiating memory\n");
     audio_buffer=malloc(sizeof(abuf_t)*g_buffer_frames);
     int i;
     for (i=0; i<g_buffer_frames; i++)
@@ -424,9 +422,6 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
     }
     pthread_mutex_unlock(&ab_mutex);
 
-#ifdef DEBUGBUFWRITE
-    syslog(LOG_DEBUG,"BUFFER_PUT_PACKET: buf_fill:%d\n",buf_fill);
-#endif
 }
 
 static int rtp_sockets[2];  // data, control
@@ -482,7 +477,6 @@ static void *rtp_thread_func(void *arg) {
             if (plen >= 16) {
                 buffer_put_packet(seqno, pktp, plen);
             }
-/* Temporary comment this as it breaks ShairPort for me in OpenWRT build. */
             else {
                 // resync?
                 if (type == 0x56 && seqno == 0) {
@@ -492,7 +486,6 @@ static void *rtp_thread_func(void *arg) {
                     pthread_mutex_unlock(&ab_mutex);
                 }
             }
-/**/
         }
     }
 
@@ -709,9 +702,6 @@ static short *buffer_get_frame(void) {
     unsigned short next;
     int i;
 
-#ifdef DEBUGBUFWRITE
-    syslog(LOG_DEBUG,"BUFFER_GET_FRAME: ab_read:%d ab_write:%d, buf_fill%d\n",ab_read,ab_write,buf_fill);
-#endif
     pthread_mutex_lock(&ab_mutex);
 
     buf_fill = ab_write - ab_read;
@@ -725,7 +715,6 @@ static short *buffer_get_frame(void) {
         buf_fill = ab_write - ab_read;
         bf_est_reset(buf_fill);
         pthread_mutex_unlock(&ab_mutex);
-
         return 0;
     }
     if (buf_fill >= g_buffer_frames) {   // overrunning! uh-oh. restart at a sane distance
@@ -757,6 +746,9 @@ static short *buffer_get_frame(void) {
     curframe->ready = 0;
     pthread_mutex_unlock(&ab_mutex);
 
+#ifdef DEBUGBUFWRITE
+    syslog(LOG_DEBUG,"BUFFER_GET_FRAME: ab_read:%d ab_write:%d, buf_fill:%d\n",ab_read,ab_write,buf_fill);
+#endif
     return curframe->data;
 }
 
@@ -827,8 +819,8 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
             *outptr++ = dithered_vol(*inptr++);
         }
     }
-    pthread_mutex_unlock(&vol_mutex);
 #endif
+    pthread_mutex_unlock(&vol_mutex);
 #endif
 
     return frame_size + stuff;
@@ -850,6 +842,10 @@ static void *audio_thread_func(void *arg) {
 #ifdef FANCY_RESAMPLING
     float *frame, *outframe;
     SRC_DATA srcdat;
+
+#ifdef DEBUGAUDIOTHREAD
+    syslog(LOG_DEBUG,"Audio Thread Start\n");
+#endif
     if (fancy_resampling) {
         frame = malloc(frame_size*2*sizeof(float));
         outframe = malloc(2*frame_size*2*sizeof(float));
@@ -864,6 +860,9 @@ static void *audio_thread_func(void *arg) {
 #endif
 
     while (1) {
+#ifdef DEBUGAUDIOTHREAD
+       syslog(LOG_DEBUG,"Audio Thread loop\n");
+#endif
        if (ab_buffering) {
 #ifdef DEBUGAUDIOTHREAD
            syslog(LOG_DEBUG,"Silence packet play\n");
