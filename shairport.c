@@ -75,13 +75,35 @@ static void handle_sigchld(int signo) {
     waitpid(-1, &status, WNOHANG);
 }
 
+char tPidFile[255] = "/var/run/shairport.pid";
+
 static void handle_sigterm(int signo) {
     if (g_avahi_pid>0)
     {
         syslog(LOG_DEBUG,"SIGTERM caught, killing avahi-publish-service (%d) before exit\n", g_avahi_pid);
         kill(g_avahi_pid, SIGTERM);
-        exit(0);
     }
+    int pid=0;
+    FILE* fd=fopen(tPidFile,"r");
+    if (fd==NULL)
+    {
+        syslog(LOG_ERR, "PID File: %s not found\n",tPidFile);
+    } else {
+        fscanf(fd,"%d",&pid);
+        fclose(fd);
+        if (getpid()==pid){
+          syslog(LOG_INFO,"Removing PID file\n");
+          if (remove(tPidFile)!=0)
+          {
+            syslog(LOG_ERR,"Cannot remove PID file %s\n",tPidFile);
+          } else {
+            syslog(LOG_INFO,"PID file: %s removed.\n",tPidFile);
+          }
+        } else {
+          syslog(LOG_ERR,"PID file mismatch, please check\n");
+        }
+    }
+    exit(0);
 }
 
 char tAoDriver[56] = "";
@@ -179,6 +201,10 @@ int main(int argc, char **argv)
     {
       strncpy(tPassword, arg+11, 55);
     }
+    else if(!strncmp(arg, "--pid_file=",11 ))
+    {
+      strncpy(tPidFile, arg+11, 55);
+    }
     else if(!strcmp(arg, "-o"))
     {
       tPort = atoi(*++argv);
@@ -236,6 +262,8 @@ int main(int argc, char **argv)
       printf("  -o, --server_port=5002                Sets Port for Avahi/dns-sd/howl\n");
       printf("  -b, --buffer=282                      Sets Number of frames to buffer before beginning playback\n");
       printf("  --buffer_size=1024                    Sets buffer size\n");
+      printf("  -d                                    Daemonize\n");
+      printf("  --pid_file=/var/run/shairport.pid     Sets PID file in -d mode\n");
 #ifndef ALSA
       printf("  --ao_driver=<driver>                  Sets libao driver\n");
       printf("  --ao_devicename=<devicename>          Sets libao device name\n");
@@ -258,10 +286,6 @@ int main(int argc, char **argv)
      syslog(LOG_ERR, "buffer value must be > 30 and < %d\n", get_buffer_frames());
      return(-1);
   }
-  if (bufferStartFill < 0)
-  {
-     syslog(LOG_INFO, "Using default start threashold\n");
-  }
 
   setlogmask(LOG_UPTO(tLogLvl));
   if(tDaemonize)
@@ -276,6 +300,17 @@ int main(int argc, char **argv)
     }
     else if(tPid > 0)
     {
+      syslog(LOG_INFO,"Writing PID file %s\n",tPidFile);
+      FILE* fd=fopen(tPidFile,"w");
+      if (fd==NULL)
+      {
+        syslog(LOG_WARNING,"Cannot update PID file %s\n", tPidFile);
+      }
+      else
+      {
+        fprintf(fd,"%d\n",tPid);
+        fclose(fd);
+      }
       exit(0);
     }
     else

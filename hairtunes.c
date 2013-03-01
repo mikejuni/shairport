@@ -99,7 +99,7 @@ static void ab_resync(void);
 
 // interthread variables
 // stdin->decoder
-#ifndef USE_ALSA_VOLUME
+#ifdef SOFT_VOL
 static double volume = 1.0;
 static int fix_volume = 0x10000;
 static pthread_mutex_t vol_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -238,7 +238,7 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
             syslog(LOG_DEBUG, "VOL: %lf\n", f);
 #endif
             set_volume(f);
-#ifndef USE_ALSA_VOLUME
+#ifdef SOFT_VOL
             pthread_mutex_lock(&vol_mutex);
             volume = pow(10.0,0.05*f);
             fix_volume = 65536.0 * volume;
@@ -595,7 +595,7 @@ static int init_rtp(void) {
     return port;
 }
 
-#ifndef USE_ALSA_VOLUME
+#ifdef SOFT_VOL
 static short lcg_rand(void) {
 	static unsigned long lcg_prev = 12345;
 	lcg_prev = lcg_prev * 69069 + 3;
@@ -604,7 +604,7 @@ static short lcg_rand(void) {
 #endif
 
 static inline short dithered_vol(short sample) {
-#ifdef USE_ALSA_VOLUME
+#ifndef SOFT_VOL
     return sample;
 #else
     static short rand_a, rand_b;
@@ -779,7 +779,7 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
     syslog(LOG_DEBUG,"STUFF: Stuffing playback rate %f\n", playback_rate);
 #endif
 
-#ifdef USE_ALSA_VOLUME
+#ifndef SOFT_VOL
     for (i=0; i<stuffsamp; i++) {   // the whole frame, if no stuffing
         *outptr++ = *inptr++;
         *outptr++ = *inptr++;
