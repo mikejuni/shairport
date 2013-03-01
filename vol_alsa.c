@@ -5,16 +5,33 @@
 #include <stdarg.h>
 #include <syslog.h>
 
-static char* DEFAULT_CARD = "default";
+//static char* DEFAULT_CARD = "default";
 static snd_mixer_t *mixer_handle = NULL;
 static snd_mixer_selem_id_t *mixer_master = NULL;
 static snd_mixer_elem_t *volume_handle = NULL;
 static long g_vol_max, g_vol_min;
 static long g_prev_vol = 0;
+/*
 static char* g_mixer = NULL;
 static char* g_ctl = NULL;
-static char* DEFAULT_MIXER = "Master";
+*/
+static char g_mixer[56]="Master";
+static char g_ctl[56]="default";
+//static char* DEFAULT_MIXER = "Master";
 
+void parse_vol_arg(char* arg)
+{
+    if (!strncmp(arg, "--alsa_ctl=",11))
+    {
+        strncpy(g_ctl, arg+11, 55);
+    }
+    if (!strncmp(arg, "--alsa_volume=",14))
+    {
+        strncpy(g_mixer, arg+14, 55);
+    }
+}
+
+/*
 void set_volume_param(char* params, ...)
 {
     char* ctl;
@@ -33,10 +50,11 @@ void set_volume_param(char* params, ...)
     else
         g_mixer=DEFAULT_MIXER;
 }
+*/
 
 void init_volume_ctl()
 {
-    syslog(LOG_INFO,"ALSA: Use ALSA Mixer rather than soft manupulating volume\n");
+    syslog(LOG_INFO,"ALSA_VOL: Setting ALSA volume control %s on %s\n",g_ctl,g_mixer);
     snd_mixer_open(&mixer_handle, 0);
     snd_mixer_attach(mixer_handle, g_ctl);
     snd_mixer_selem_register(mixer_handle,NULL,NULL);
@@ -71,4 +89,10 @@ void set_volume(double vol)
     	snd_mixer_selem_set_playback_volume_all(volume_handle,cur_vol);
         g_prev_vol=cur_vol;
     }
+}
+
+void print_vol_args()
+{
+      printf("  --alsa_volume=<ALSA Volume Output>    Sets ALSA Mixer output device (Can be found by alsamixer)\n");
+      printf("  --alsa_ctl=<ALSA Mixer Control>       Sets ALSA Control device (Can be found by alsamixer)\n");
 }

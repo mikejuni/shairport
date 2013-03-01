@@ -12,6 +12,14 @@ static char *libao_driver = NULL;
 static char *libao_devicename = NULL;
 static char *libao_deviceid = NULL; // ao_options expects "char*"
 
+void print_audio_args()
+{
+      printf("  --ao_driver=<driver>                  Sets libao driver\n");
+      printf("  --ao_devicename=<devicename>          Sets libao device name\n");
+      printf("  --ao_deviceid=<deviceid>              Sets libao device ID\n");
+
+}
+
 void audio_set_driver(char* driver) {
     if (strlen(driver)!=0){
         libao_driver = driver;

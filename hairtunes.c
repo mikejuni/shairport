@@ -189,13 +189,15 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
         rtphost = pRtpHost;
     if(pPipeName != NULL)
         pipename = pPipeName;
+/*
     if(pLibaoDriver != NULL)
         audio_set_driver(pLibaoDriver);
     if(pLibaoDeviceName != NULL)
         audio_set_device_name(pLibaoDeviceName);
     if(pLibaoDeviceId != NULL)
         audio_set_device_id(pLibaoDeviceId);
-    set_volume_param(pAlsaCtl, pAlsaVol);
+*/
+//    set_volume_param(pAlsaCtl, pAlsaVol);
     
 // Initiate delay timestamp
     
@@ -237,12 +239,13 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
 #ifdef DEBUGCTL
             syslog(LOG_DEBUG, "VOL: %lf\n", f);
 #endif
-            set_volume(f);
 #ifdef SOFT_VOL
             pthread_mutex_lock(&vol_mutex);
             volume = pow(10.0,0.05*f);
             fix_volume = 65536.0 * volume;
             pthread_mutex_unlock(&vol_mutex);
+#else
+            set_volume(f);
 #endif
             continue;
         }
@@ -601,12 +604,8 @@ static short lcg_rand(void) {
 	lcg_prev = lcg_prev * 69069 + 3;
 	return lcg_prev & 0xffff;
 }
-#endif
 
 static inline short dithered_vol(short sample) {
-#ifndef SOFT_VOL
-    return sample;
-#else
     static short rand_a, rand_b;
     long out;
 
@@ -618,8 +617,8 @@ static inline short dithered_vol(short sample) {
         out -= rand_b;
     }
     return out>>16;
-#endif
 }
+#endif
 
 typedef struct {
     double hist[2];
@@ -710,6 +709,9 @@ static short *buffer_get_frame(void) {
     unsigned short next;
     int i;
 
+#ifdef DEBUGBUFWRITE
+    syslog(LOG_DEBUG,"BUFFER_GET_FRAME: ab_read:%d ab_write:%d, buf_fill%d\n",ab_read,ab_write,buf_fill);
+#endif
     pthread_mutex_lock(&ab_mutex);
 
     buf_fill = ab_write - ab_read;
@@ -863,6 +865,9 @@ static void *audio_thread_func(void *arg) {
 
     while (1) {
        if (ab_buffering) {
+#ifdef DEBUGAUDIOTHREAD
+           syslog(LOG_DEBUG,"Silence packet play\n");
+#endif
            inbuf = silence;
        } else {
             do {

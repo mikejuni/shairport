@@ -31,6 +31,8 @@
 #include "shairport.h"
 #include "hairtunes.h"
 #include "common.h"
+#include "vol.h"
+#include "audio.h"
 
 // TEMP
 
@@ -155,6 +157,8 @@ int main(int argc, char **argv)
 
   char *arg;
   while ( (arg = *++argv) ) {
+    parse_vol_arg(arg);
+    parse_audio_arg(arg);
     if(!strcmp(arg, "-a"))
     {
        strncpy(tServerName, *++argv, 55);
@@ -168,26 +172,32 @@ int main(int argc, char **argv)
     {
       strncpy(tAoDriver, arg+12, 55);
     }
+/*
     else if(!strncmp(arg, "--alsa_pcm=",11 ))
     {
       strncpy(tAoDriver, arg+11, 55);
     }
+*/
     else if(!strncmp(arg, "--ao_devicename=",16 ))
     {
       strncpy(tAoDeviceName, arg+16, 55);
     }
+/*
     else if(!strncmp(arg, "--alsa_volume=",14 ))
     {
       strncpy(tAlsaVol, arg+14, 55);
     }
+*/
     else if(!strncmp(arg, "--ao_deviceid=",14 ))
     {
       strncpy(tAoDeviceId, arg+14, 55);
     }
+/*
     else if(!strncmp(arg, "--alsa_ctl=",11 ))
     {
       strncpy(tAlsaCtl, arg+11, 55);
     }
+*/
     else if(!strncmp(arg, "--apname=", 9))
     {
       strncpy(tServerName, arg+9, 55);
@@ -264,17 +274,8 @@ int main(int argc, char **argv)
       printf("  --buffer_size=1024                    Sets buffer size\n");
       printf("  -d                                    Daemonize\n");
       printf("  --pid_file=/var/run/shairport.pid     Sets PID file in -d mode\n");
-#ifndef ALSA
-      printf("  --ao_driver=<driver>                  Sets libao driver\n");
-      printf("  --ao_devicename=<devicename>          Sets libao device name\n");
-      printf("  --ao_deviceid=<deviceid>              Sets libao device ID\n");
-#else
-      printf("  --alsa_pcm=<ALSA PCM Device>          Sets ALSA PCM device (Can be found by aplay -L)\n");
-#endif
-#ifdef USE_ALSA_VOLUME
-      printf("  --alsa_volume=<ALSA Volume Output>    Sets ALSA Mixer output device (Can be found by alsamixer)\n");
-      printf("  --alsa_ctl=<ALSA Mixer Control>       Sets ALSA Control device (Can be found by alsamixer)\n");
-#endif
+      print_audio_args();
+      print_vol_args();
       printf("  -d                                    Daemon mode\n");
       printf("  -q, --quiet                           Supresses all output.\n");
       printf("  -v,-v2,-v3,-vv                        Various debugging levels\n\n");
