@@ -1,10 +1,10 @@
 #CFLAGS+=-Wall $(shell pkg-config --cflags openssl) 
 CFLAGS+=-Wall $(shell pkg-config --cflags openssl) -DDISABLESTUFF
-DEBUGCFLAGS+=-DDEBUGCTL -DDEBUGBUFWRITE -g
+DEBUGCFLAGS+=-DDEBUGCTL 
 #DEBUGCFLAGS+=-DDEBUGCTL -DDEBUGSTUFF -DDEBUGALSA -DDEBUGBUFWRITE -g
 #DEBUGCFLAGS+=-DDEBUGBUFWRITE -g
 #DEBUGCFLAGS+=-DDEBUGSTUFF
-USE:=alsa
+AUDIO:=alsa
 VOL:=alsa
 ifneq ($(VOL),soft)
 	USECFLAGS:=$(shell pkg-config --cflags alsa) 
@@ -13,18 +13,10 @@ else
 	CFLAGS+=-DSOFT_VOL
 endif
 LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
-USECFLAGS+=$(shell pkg-config --cflags $(USE)) 
-USELDFLAGS+=$(shell pkg-config --libs $(USE)) 
-USEOBJS+=socketlib.o shairport.o alac.o hairtunes.o audio_$(USE).o  vol_$(VOL).o
-ifeq ($(USE),alsa)
-        CFLAGS+=-DALSA
-else
-	CFLAGS+=-DAO
-endif
+USECFLAGS+=$(shell pkg-config --cflags $(AUDIO)) 
+USELDFLAGS+=$(shell pkg-config --libs $(AUDIO)) 
+USEOBJS+=socketlib.o shairport.o alac.o hairtunes.o audio_$(AUDIO).o  vol_$(VOL).o
 all: shairport
-
-hairtunes: hairtunes.c alac.o audio_$(USE).o
-	$(CC) $(CFLAGS) $(DEBUGCFLAGS) $(USECFLAGS) -DHAIRTUNES_STANDALONE hairtunes.c alac.o audio_$(USE).o -o $@ $(LDFLAGS) $(USELDFLAGS)
 
 shairport: $(USEOBJS) 
 	$(CC) $(CFLAGS) $(DEBUGCFLAGS) $(USECFLAGS) $(USEOBJS) -o $@ $(LDFLAGS) $(USELDFLAGS)
@@ -40,11 +32,6 @@ clean:
 
 prefix=/usr/local
 install: shairport
-	install -D -m 0755 shairport $(DESTDIR)$(prefix)/bin/shairport
-
-install-pl: hairtunes shairport
-	install -D -m 0755 hairtunes $(DESTDIR)$(prefix)/bin/hairtunes
-	install -D -m 0755 shairport.pl $(DESTDIR)$(prefix)/bin/shairport.pl
 	install -D -m 0755 shairport $(DESTDIR)$(prefix)/bin/shairport
 
 .PHONY: all clean install
