@@ -41,12 +41,6 @@ int bufferStartFill = -1;
 #else
 #define DEVNULL "/dev/null"
 #endif
-/*
-#define RSA_LOG_LEVEL LOG_DEBUG
-#define SOCKET_LOG_LEVEL LOG_DEBUG
-#define HEADER_LOG_LEVEL LOG_DEBUG
-#define AVAHI_LOG_LEVEL LOG_DEBUG
-*/
 
 static void handleClient(int pSock, char *pPassword, char *pHWADDR);
 static void writeDataToClient(int pSock, struct shairbuffer *pResponse);
@@ -74,10 +68,20 @@ static void initBuffer(struct shairbuffer *pBuf, int pNumChars);
 static void setKeys(struct keyring *pKeys, char *pIV, char* pAESKey, char *pFmtp);
 static RSA *loadKey(void);
 
+static int g_avahi_pid=-1;
 
 static void handle_sigchld(int signo) {
     int status;
     waitpid(-1, &status, WNOHANG);
+}
+
+static void handle_sigterm(int signo) {
+    if (g_avahi_pid>0)
+    {
+        syslog(LOG_DEBUG,"SIGTERM caught, killing avahi-publish-service (%d) before exit\n", g_avahi_pid);
+        kill(g_avahi_pid, SIGTERM);
+        exit(0);
+    }
 }
 
 char tAoDriver[56] = "";
@@ -91,6 +95,8 @@ int main(int argc, char **argv)
 {
   // unfortunately we can't just IGN on non-SysV systems
   openlog("SHAIRPORT", LOG_PID | LOG_PERROR, LOG_USER);
+
+// Register SIGCHLD to avoid zombee process
   struct sigaction sa;
   sa.sa_handler = handle_sigchld;
   sa.sa_flags = 0;
@@ -98,6 +104,17 @@ int main(int argc, char **argv)
   if (sigaction(SIGCHLD, &sa, NULL) < 0) {
       perror("sigaction");
       return 1;
+  }
+
+// Register SIGTERM to kill avahi process
+  struct sigaction sa_term;
+  sa_term.sa_handler=handle_sigterm;
+  sa.sa_flags=0;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGTERM, &sa_term, NULL) < 0)
+  {
+    perror("sigaction on sigterm");
+    return 1;
   }
 
   char tHWID[HWID_SIZE] = {0,51,52,53,54,55};
@@ -308,7 +325,7 @@ int main(int argc, char **argv)
   }
   else
   {
-    startAvahi(tHWID_Hex, tServerName, tPort);
+    g_avahi_pid=startAvahi(tHWID_Hex, tServerName, tPort);
     syslog(LOG_DEBUG, "Starting connection server: specified server port: %d\n", tPort);
     int tServerSock = setupListenServer(&tAddrInfo, tPort);
     if(tServerSock < 0)
@@ -1007,7 +1024,7 @@ static int startAvahi(const char *pHWStr, const char *pServerName, int pPort)
     char tName[100 + HWID_SIZE + 3];
     if(strlen(pServerName) > tMaxServerName)
     {
-      syslog(LOG_INFO,"Hey dog, we see you like long server names, "
+      syslog(LOG_ERR,"Hey dog, we see you like long server names, "
               "so we put a strncat in our command so we don't buffer overflow, while you listen to your flow.\n"
               "We just used the first %d characters.  Pick something shorter if you want\n", tMaxServerName);
     }
@@ -1113,30 +1130,6 @@ static char *getTrimmed(char *pChar, int pSize, int pEndStr, int pAddNL, char *p
   }
   return pTrimDest;
 }
-
-/*
-static void syslog(int pLevel, char *pFormat, ...)
-{
-  #ifdef SHAIRPORT_LOG
-  if(isLogEnabledFor(pLevel))
-  {
-    va_list argp;
-    va_start(argp, pFormat);
-    vprintf(pFormat, argp);
-    va_end(argp);
-  }
-  #endif
-}
-
-static int isLogEnabledFor(int pLevel)
-{
-  if(pLevel <= kCurrentLogLevel)
-  {
-    return TRUE;
-  }
-  return FALSE;
-}
-*/
 
 static void initConnection(struct connection *pConn, struct keyring *pKeys,
                     struct comms *pComms, int pSocket, char *pPassword)

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/signal.h>
+//#include <sys/signal.h>
 #include <ao/ao.h>
 #include "common.h"
 
