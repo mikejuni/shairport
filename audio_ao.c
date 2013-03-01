@@ -97,8 +97,3 @@ void audio_deinit(void)
 {
     // deinitialization not required with libao?
 }
-
-void audio_set_volume(double vol)
-{
-    fprintf(stderr,"Volume setting not supported in AO library\n");
-}

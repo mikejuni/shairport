@@ -1,13 +1,19 @@
+#CFLAGS+=-Wall $(shell pkg-config --cflags openssl) 
 CFLAGS+=-Wall $(shell pkg-config --cflags openssl) -DDISABLESTUFF
 #DEBUGCFLAGS+=-DDEBUGCTL -DDEBUGSTUFF -DDEBUGALSA -DDDEBUGALAC -DDEBUGALSAVOL -DDEBUGBUFWRITE -g
 #DEBUGCFLAGS+=-DDEBUGBUFWRITE -g
 #DEBUGCFLAGS+=-DDEBUGSTUFF
 USE:=alsa
 USE_ALSA_VOLUME:=1
+ifeq ($(USE_ALSA_VOLUME),1)
+	USECFLAGS:=$(shell pkg-config --cflags alsa) 
+	USELDFLAGS:=$(shell pkg-config --libs alsa)
+	USEOBJS:=vol_alsa.o 
+endif
 LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
-USECFLAGS:=$(shell pkg-config --cflags $(USE))
-USELDFLAGS:=$(shell pkg-config --libs $(USE))
-USEOBJS=socketlib.o shairport.o alac.o hairtunes.o audio_$(USE).o vol_alsa.o common.o
+USECFLAGS+=$(shell pkg-config --cflags $(USE)) 
+USELDFLAGS+=$(shell pkg-config --libs $(USE)) 
+USEOBJS+=socketlib.o shairport.o alac.o hairtunes.o audio_$(USE).o 
 ifeq ($(USE_ALSA_VOLUME),1)	
 	CFLAGS+=-DUSE_ALSA_VOLUME
 endif

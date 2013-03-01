@@ -32,15 +32,6 @@
 #include "hairtunes.h"
 #include "common.h"
 
-/*
-#ifndef TRUE
-#define TRUE (-1)
-#endif
-#ifndef FALSE
-#define FALSE (0)
-#endif
-*/
-
 // TEMP
 
 int bufferStartFill = -1;
@@ -51,10 +42,10 @@ int bufferStartFill = -1;
 #define DEVNULL "/dev/null"
 #endif
 /*
-#define RSA_LOG_LEVEL SLOG_DEBUG_VV
-#define SOCKET_LOG_LEVEL SLOG_DEBUG_VV
-#define HEADER_LOG_LEVEL SLOG_DEBUG
-#define AVAHI_LOG_LEVEL SLOG_DEBUG
+#define RSA_LOG_LEVEL LOG_DEBUG
+#define SOCKET_LOG_LEVEL LOG_DEBUG
+#define HEADER_LOG_LEVEL LOG_DEBUG
+#define AVAHI_LOG_LEVEL LOG_DEBUG
 */
 
 static void handleClient(int pSock, char *pPassword, char *pHWADDR);
@@ -75,11 +66,6 @@ static void addNToShairBuffer(struct shairbuffer *pBuf, char *pNewBuf, int pNofN
 
 static char *getTrimmedMalloc(char *pChar, int pSize, int pEndStr, int pAddNL);
 static char *getTrimmed(char *pChar, int pSize, int pEndStr, int pAddNL, char *pTrimDest);
-
-/*
-static void slog(int pLevel, char *pFormat, ...);
-static int isLogEnabledFor(int pLevel);
-*/
 
 static void initConnection(struct connection *pConn, struct keyring *pKeys, struct comms *pComms, int pSocket, char *pPassword);
 static void closePipe(int *pPipe);
@@ -104,7 +90,7 @@ char tAlsaVol[56] = "";
 int main(int argc, char **argv)
 {
   // unfortunately we can't just IGN on non-SysV systems
-  openlog("SHAIRPORT", LOG_PID | LOG_PERROR, LOG_DAEMON);
+  openlog("SHAIRPORT", LOG_PID | LOG_PERROR, LOG_USER);
   struct sigaction sa;
   sa.sa_handler = handle_sigchld;
   sa.sa_flags = 0;
@@ -126,6 +112,7 @@ int main(int argc, char **argv)
   int  tUseKnownHWID = FALSE;
   int  tDaemonize = FALSE;
   int  tPort = PORT;
+  int tLogLvl = LOG_ERR;
 
   char *arg;
   while ( (arg = *++argv) ) {
@@ -204,64 +191,67 @@ int main(int argc, char **argv)
     }
     else if(!strcmp(arg, "-q") || !strncmp(arg, "--quiet", 7))
     {
-      set_log_level(0);
+      tLogLvl=LOG_CRIT;
     }
     else if(!strcmp(arg, "-d"))
     {
       tDaemonize = TRUE;
-      set_log_level(0);
     }
     else if(!strcmp(arg, "-v"))
     {
-      set_log_level(SLOG_DEBUG);
+      tLogLvl=LOG_WARNING;
     }
     else if(!strcmp(arg, "-v2"))
     {
-      set_log_level(SLOG_DEBUG_V);
+      tLogLvl=LOG_INFO;
     }
     else if(!strcmp(arg, "-vv") || !strcmp(arg, "-v3"))
     {
-      set_log_level(SLOG_DEBUG_VV);
+      tLogLvl=LOG_DEBUG;
     }    
     else if(!strcmp(arg, "-h") || !strcmp(arg, "--help"))
     {
-      slog(SLOG_INFO, "ShairPort version 0.05 C port - Airport Express emulator\n");
-      slog(SLOG_INFO, "Usage:\nshairport [OPTION...]\n\nOptions:\n");
-      slog(SLOG_INFO, "  -a, --apname=AirPort                  Sets Airport name\n");
-      slog(SLOG_INFO, "  -p, --password=secret                 Sets Password (not working)\n");
-      slog(SLOG_INFO, "  -o, --server_port=5002                Sets Port for Avahi/dns-sd/howl\n");
-      slog(SLOG_INFO, "  -b, --buffer=282                      Sets Number of frames to buffer before beginning playback\n");
-      slog(SLOG_INFO, "  --buffer_size=1024                    Sets buffer size\n");
+      printf("ShairPort version 0.05 C port - Airport Express emulator\n");
+      printf("Usage:\nshairport [OPTION...]\n\nOptions:\n");
+      printf("  -h                                    Show this help\n");
+      printf("  -a, --apname=AirPort                  Sets Airport name\n");
+      printf("  -p, --password=secret                 Sets Password (not working)\n");
+      printf("  -o, --server_port=5002                Sets Port for Avahi/dns-sd/howl\n");
+      printf("  -b, --buffer=282                      Sets Number of frames to buffer before beginning playback\n");
+      printf("  --buffer_size=1024                    Sets buffer size\n");
 #ifndef ALSA
-      slog(SLOG_INFO, "  --ao_driver=<driver>                  Sets libao driver\n");
-      slog(SLOG_INFO, "  --ao_devicename=<devicename>          Sets libao device name\n");
-      slog(SLOG_INFO, "  --ao_deviceid=<deviceid>              Sets libao device ID\n");
+      printf("  --ao_driver=<driver>                  Sets libao driver\n");
+      printf("  --ao_devicename=<devicename>          Sets libao device name\n");
+      printf("  --ao_deviceid=<deviceid>              Sets libao device ID\n");
 #else
-      slog(SLOG_INFO, "  --alsa_pcm=<ALSA PCM Device>          Sets ALSA PCM device (Can be found by aplay -L)\n");
+      printf("  --alsa_pcm=<ALSA PCM Device>          Sets ALSA PCM device (Can be found by aplay -L)\n");
 #endif
 #ifdef USE_ALSA_VOLUME
-      slog(SLOG_INFO, "  --alsa_volume=<ALSA Volume Output>    Sets ALSA Mixer output device (Can be found by alsamixer)\n");
-      slog(SLOG_INFO, "  --alsa_ctl=<ALSA Mixer Control>       Sets ALSA Control device (Can be found by alsamixer)\n");
+      printf("  --alsa_volume=<ALSA Volume Output>    Sets ALSA Mixer output device (Can be found by alsamixer)\n");
+      printf("  --alsa_ctl=<ALSA Mixer Control>       Sets ALSA Control device (Can be found by alsamixer)\n");
 #endif
-      slog(SLOG_INFO, "  -d                                    Daemon mode\n");
-      slog(SLOG_INFO, "  -q, --quiet                           Supresses all output.\n");
-      slog(SLOG_INFO, "  -v,-v2,-v3,-vv                        Various debugging levels\n");
-      slog(SLOG_INFO, "\n");
+      printf("  -d                                    Daemon mode\n");
+      printf("  -q, --quiet                           Supresses all output.\n");
+      printf("  -v,-v2,-v3,-vv                        Various debugging levels\n\n");
       return 0;
     }    
   }
 
   if ( (bufferStartFill >= 0 && bufferStartFill < 30) || bufferStartFill > get_buffer_frames() ) {
-     fprintf(stderr, "buffer value must be > 30 and < %d\n", get_buffer_frames());
-     return(0);
+     syslog(LOG_ERR, "buffer value must be > 30 and < %d\n", get_buffer_frames());
+     return(-1);
   }
   if (bufferStartFill < 0)
   {
-     slog(SLOG_INFO, "Using default start threashold\n");
+     syslog(LOG_INFO, "Using default start threashold\n");
   }
 
+  setlogmask(LOG_UPTO(tLogLvl));
   if(tDaemonize)
   {
+    closelog();
+    openlog("SHAIRPORT", LOG_PID, LOG_DAEMON);
+    setlogmask(LOG_UPTO(tLogLvl));
     int tPid = fork();
     if(tPid < 0)
     {
@@ -304,10 +294,10 @@ int main(int argc, char **argv)
   }
   //tPrintHWID[HWID_SIZE] = '\0';
 
-  slog(SLOG_INFO, "LogLevel: %d\n", get_log_level());
-  slog(SLOG_INFO, "AirName: %s\n", tServerName);
-  slog(SLOG_INFO, "HWID: %.*s\n", HWID_SIZE, tHWID+1);
-  slog(SLOG_INFO, "HWID_Hex(%d): %s\n", strlen(tHWID_Hex), tHWID_Hex);
+  syslog(LOG_INFO, "LogLevel: %d\n", tLogLvl);
+  syslog(LOG_INFO, "AirName: %s\n", tServerName);
+  syslog(LOG_INFO, "HWID: %.*s\n", HWID_SIZE, tHWID+1);
+  syslog(LOG_INFO, "HWID_Hex(%d): %s\n", (int)strlen(tHWID_Hex), tHWID_Hex);
 
   if(tSimLevel >= 1)
   {
@@ -319,19 +309,19 @@ int main(int argc, char **argv)
   else
   {
     startAvahi(tHWID_Hex, tServerName, tPort);
-    slog(SLOG_DEBUG_V, "Starting connection server: specified server port: %d\n", tPort);
+    syslog(LOG_DEBUG, "Starting connection server: specified server port: %d\n", tPort);
     int tServerSock = setupListenServer(&tAddrInfo, tPort);
     if(tServerSock < 0)
     {
       freeaddrinfo(tAddrInfo);
-      slog(SLOG_INFO, "Error setting up server socket on port %d, try specifying a different port\n", tPort);
+      syslog(LOG_INFO, "Error setting up server socket on port %d, try specifying a different port\n", tPort);
       exit(1);
     }
 
     int tClientSock = 0;
     while(1)
     {
-      slog(SLOG_DEBUG_V, "Waiting for clients to connect\n");
+      syslog(LOG_DEBUG, "Waiting for clients to connect\n");
       tClientSock = acceptClient(tServerSock, tAddrInfo);
       if(tClientSock > 0)
       {
@@ -340,7 +330,7 @@ int main(int argc, char **argv)
         {
           freeaddrinfo(tAddrInfo);
           tAddrInfo = NULL;
-          slog(SLOG_DEBUG, "...Accepted Client Connection..\n");
+          syslog(LOG_DEBUG, "...Accepted Client Connection..\n");
           close(tServerSock);
           handleClient(tClientSock, tPassword, tHWID);
           //close(tClientSock);
@@ -348,7 +338,7 @@ int main(int argc, char **argv)
         }
         else
         {
-          slog(SLOG_DEBUG_VV, "Child now busy handling new client\n");
+          syslog(LOG_DEBUG, "Child now busy handling new client\n");
           close(tClientSock);
         }
       }
@@ -360,7 +350,7 @@ int main(int argc, char **argv)
     }
   }
 
-  slog(SLOG_DEBUG_VV, "Finished, and waiting to clean everything up\n");
+  syslog(LOG_DEBUG, "Finished, and waiting to clean everything up\n");
   sleep(1);
   if(tAddrInfo != NULL)
   {
@@ -409,7 +399,7 @@ static int findEnd(char *tReadBuf)
 
 static void handleClient(int pSock, char *pPassword, char *pHWADDR)
 {
-  slog(SLOG_DEBUG_VV, "In Handle Client\n");
+  syslog(LOG_DEBUG, "In Handle Client\n");
   fflush(stdout);
 
   socklen_t len;
@@ -428,14 +418,14 @@ static void handleClient(int pSock, char *pPassword, char *pHWADDR)
 
   // deal with both IPv4 and IPv6:
   if (addr.ss_family == AF_INET) {
-      slog(SLOG_DEBUG_V, "Constructing ipv4 address\n");
+      syslog(LOG_DEBUG, "Constructing ipv4 address\n");
       struct sockaddr_in *s = (struct sockaddr_in *)&addr;
       port = ntohs(s->sin_port);
       inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
       memcpy(ipbin, &s->sin_addr, 4);
       ipbinlen = 4;
   } else { // AF_INET6
-      slog(SLOG_DEBUG_V, "Constructing ipv6 address\n");
+      syslog(LOG_DEBUG, "Constructing ipv6 address\n");
       struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
       port = ntohs(s->sin6_port);
       inet_ntop(AF_INET6, &s->sin6_addr, ipstr, sizeof ipstr);
@@ -459,8 +449,8 @@ static void handleClient(int pSock, char *pPassword, char *pHWADDR)
       }
   }
 
-  slog(SLOG_DEBUG_V, "Peer IP address: %s\n", ipstr);
-  slog(SLOG_DEBUG_V, "Peer port      : %d\n", port);
+  syslog(LOG_DEBUG, "Peer IP address: %s\n", ipstr);
+  syslog(LOG_DEBUG, "Peer port      : %d\n", port);
 
   int tMoreDataNeeded = 1;
   struct keyring     tKeys;
@@ -481,16 +471,16 @@ static void handleClient(int pSock, char *pPassword, char *pHWADDR)
       tError = readDataFromClient(pSock, &(tConn.recv));
       if(!tError && strlen(tConn.recv.data) > 0)
       {
-        slog(SLOG_DEBUG_VV, "Finished Reading some data from client\n");
+        syslog(LOG_DEBUG, "Finished Reading some data from client\n");
         // parse client request
         tMoreDataNeeded = parseMessage(&tConn, ipbin, ipbinlen, pHWADDR);
         if(1 == tMoreDataNeeded)
         {
-          slog(SLOG_DEBUG_VV, "\n\nNeed to read more data\n");
+          syslog(LOG_DEBUG, "\n\nNeed to read more data\n");
         }
         else if(-1 == tMoreDataNeeded) // Forked process down below ended.
         {
-          slog(SLOG_DEBUG_V, "Forked Process ended...cleaning up\n");
+          syslog(LOG_DEBUG, "Forked Process ended...cleaning up\n");
           cleanup(&tConn);
           // pSock was already closed
           return;
@@ -499,13 +489,13 @@ static void handleClient(int pSock, char *pPassword, char *pHWADDR)
       }
       else
       {
-        slog(SLOG_DEBUG, "Error reading from socket, closing client\n");
+        syslog(LOG_DEBUG, "Error reading from socket, closing client\n");
         // Error reading data....quit.
         cleanup(&tConn);
         return;
       }
     }
-    slog(SLOG_DEBUG_VV, "Writing: %d chars to socket\n", tConn.resp.current);
+    syslog(LOG_DEBUG, "Writing: %d chars to socket\n", tConn.resp.current);
     //tConn->resp.data[tConn->resp.current-1] = '\0';
     writeDataToClient(pSock, &(tConn.resp));
    // Finished reading one message...
@@ -517,9 +507,9 @@ static void handleClient(int pSock, char *pPassword, char *pHWADDR)
 
 static void writeDataToClient(int pSock, struct shairbuffer *pResponse)
 {
-  slog(SLOG_DEBUG_VV, "\n----Beg Send Response Header----\n%.*s\n", pResponse->current, pResponse->data);
+  syslog(LOG_DEBUG, "\n----Beg Send Response Header----\n%.*s\n", pResponse->current, pResponse->data);
   send(pSock, pResponse->data, pResponse->current,0);
-  slog(SLOG_DEBUG_VV, "----Send Response Header----\n");
+  syslog(LOG_DEBUG, "----Send Response Header----\n");
 }
 
 static int readDataFromClient(int pSock, struct shairbuffer *pClientBuffer)
@@ -532,7 +522,7 @@ static int readDataFromClient(int pSock, struct shairbuffer *pClientBuffer)
   while(tRetval > 0 && tEnd < 0)
   {
      // Read from socket until \n\n, \r\n\r\n, or \r\r is found
-      slog(SLOG_DEBUG_V, "Waiting To Read...\n");
+      syslog(LOG_DEBUG, "Waiting To Read...\n");
       fflush(stdout);
       tRetval = read(pSock, tReadBuf, MAX_SIZE);
       // if new buffer contains the end of request string, only copy partial buffer?
@@ -543,40 +533,40 @@ static int readDataFromClient(int pSock, struct shairbuffer *pClientBuffer)
         {
           pClientBuffer->marker = tEnd+1; // Marks start of content
         }
-        slog(SOCKET_LOG_LEVEL, "Found end of http request at: %d\n", tEnd);
+        syslog(SOCKET_LOG_LEVEL, "Found end of http request at: %d\n", tEnd);
         fflush(stdout);        
       }
       else
       {
         tEnd = MAX_SIZE;
-        slog(SOCKET_LOG_LEVEL, "Read %d of data so far\n%s\n", tRetval, tReadBuf);
+        syslog(SOCKET_LOG_LEVEL, "Read %d of data so far\n%s\n", tRetval, tReadBuf);
         fflush(stdout);
       }
       if(tRetval > 0)
       {
         // Copy read data into tReceive;
-        slog(SOCKET_LOG_LEVEL, "Read %d data, using %d of it\n", tRetval, tEnd);
+        syslog(SOCKET_LOG_LEVEL, "Read %d data, using %d of it\n", tRetval, tEnd);
         addNToShairBuffer(pClientBuffer, tReadBuf, tRetval);
-        slog(SLOG_DEBUG_VV, "Finished copying data\n");
+        syslog(LOG_DEBUG, "Finished copying data\n");
       }
       else
       {
-        slog(SLOG_DEBUG, "Error reading data from socket, got: %d bytes", tRetval);
+        syslog(LOG_DEBUG, "Error reading data from socket, got: %d bytes", tRetval);
         return tRetval;
       }
   }
   if(tEnd + 1 != tRetval)
   {
-    slog(SOCKET_LOG_LEVEL, "Read more data after end of http request. %d instead of %d\n", tRetval, tEnd+1);
+    syslog(SOCKET_LOG_LEVEL, "Read more data after end of http request. %d instead of %d\n", tRetval, tEnd+1);
   }
-  slog(SOCKET_LOG_LEVEL, "Finished Reading Data:\n%s\nEndOfData\n", pClientBuffer->data);
+  syslog(SOCKET_LOG_LEVEL, "Finished Reading Data:\n%s\nEndOfData\n", pClientBuffer->data);
   fflush(stdout);
   return 0;
 }
 
 static char *getFromBuffer(char *pBufferPtr, const char *pField, int pLenAfterField, int *pReturnSize, char *pDelims)
 {
-  slog(SLOG_DEBUG_V, "GettingFromBuffer: %s\n", pField);
+  syslog(LOG_DEBUG, "GettingFromBuffer: %s\n", pField);
   char* tFound = strstr(pBufferPtr, pField);
   int tSize = 0;
   if(tFound != NULL)
@@ -597,7 +587,7 @@ static char *getFromBuffer(char *pBufferPtr, const char *pField, int pLenAfterFi
     }
     
     tSize = (int) (tShortest - tFound);
-    slog(SLOG_DEBUG_VV, "Found %.*s  length: %d\n", tSize, tFound, tSize);
+    syslog(LOG_DEBUG, "Found %.*s  length: %d\n", tSize, tFound, tSize);
     if(pReturnSize != NULL)
     {
       *pReturnSize = tSize;
@@ -605,7 +595,7 @@ static char *getFromBuffer(char *pBufferPtr, const char *pField, int pLenAfterFi
   }
   else
   {
-    slog(SLOG_DEBUG_V, "Not Found\n");
+    syslog(LOG_DEBUG, "Not Found\n");
   }
   return tFound;
 }
@@ -639,10 +629,10 @@ static int buildAppleResponse(struct connection *pConn, unsigned char *pIpBin,
   {
     char tTrim[tFoundSize + 2];
     getTrimmed(tFound, tFoundSize, TRUE, TRUE, tTrim);
-    slog(SLOG_DEBUG_VV, "HeaderChallenge:  [%s] len: %d  sizeFound: %d\n", tTrim, strlen(tTrim), tFoundSize);
+    syslog(LOG_DEBUG, "HeaderChallenge:  [%s] len: %d  sizeFound: %d\n", tTrim, (int)strlen(tTrim), tFoundSize);
     int tChallengeDecodeSize = 16;
     char *tChallenge = decode_base64((unsigned char *)tTrim, tFoundSize, &tChallengeDecodeSize);
-    slog(SLOG_DEBUG_VV, "Challenge Decode size: %d  expected 16\n", tChallengeDecodeSize);
+    syslog(LOG_DEBUG, "Challenge Decode size: %d  expected 16\n", tChallengeDecodeSize);
 
     int tCurSize = 0;
     unsigned char tChalResp[38];
@@ -664,7 +654,7 @@ static int buildAppleResponse(struct connection *pConn, unsigned char *pIpBin,
     }
 
     char *tTmp = encode_base64((unsigned char *)tChalResp, tCurSize);
-    slog(SLOG_DEBUG_VV, "Full sig: %s\n", tTmp);
+    syslog(LOG_DEBUG, "Full sig: %s\n", tTmp);
     free(tTmp);
 
     // RSA Encrypt
@@ -713,11 +703,11 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     {
 //      if(isLogEnabledFor(HEADER_LOG_LEVEL))
 //      {
-        slog(HEADER_LOG_LEVEL, "Content-Length: %s value -> %d\n", tContent, tContentSize);
+        syslog(HEADER_LOG_LEVEL, "Content-Length: %s value -> %d\n", tContent, tContentSize);
         if(pConn->recv.marker != 0)
         {
-          slog(HEADER_LOG_LEVEL, "ContentPtr has %d, but needs %d\n", 
-                  strlen(pConn->recv.data+pConn->recv.marker), tContentSize);
+          syslog(HEADER_LOG_LEVEL, "ContentPtr has %d, but needs %d\n", 
+                  (int)strlen(pConn->recv.data+pConn->recv.marker), tContentSize);
         }
 //      }
       // check if value in tContent > 2nd read from client.
@@ -726,20 +716,20 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
   }
   else
   {
-    slog(SLOG_DEBUG_VV, "No content, header only\n");
+    syslog(LOG_DEBUG, "No content, header only\n");
   }
 
   // "Creates" a new Response Header for our response message
   addToShairBuffer(&(pConn->resp), "RTSP/1.0 200 OK\r\n");
 
-//  if(isLogEnabledFor(SLOG_INFO))
+//  if(isLogEnabledFor(LOG_INFO))
 //  {
     int tLen = strchr(pConn->recv.data, ' ') - pConn->recv.data;
     if(tLen < 0 || tLen > 20)
     {
       tLen = 20;
     }
-    slog(SLOG_INFO, "********** RECV %.*s **********\n", tLen, pConn->recv.data);
+    syslog(LOG_INFO, "********** RECV %.*s **********\n", tLen, pConn->recv.data);
 //  }
 
   if(pConn->password != NULL)
@@ -749,7 +739,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
 
   if(buildAppleResponse(pConn, pIpBin, pIpBinLen, pHWID)) // need to free sig
   {
-    slog(SLOG_DEBUG_V, "Added AppleResponse to Apple-Challenge request\n");
+    syslog(LOG_DEBUG, "Added AppleResponse to Apple-Challenge request\n");
   }
 
   // Find option, then based on option, do different actions.
@@ -769,14 +759,14 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       int tKeySize = 0;
       char tEncodedAesIV[tSize + 2];
       getTrimmed(tHeaderVal, tSize, TRUE, TRUE, tEncodedAesIV);
-      slog(SLOG_DEBUG_VV, "AESIV: [%.*s] Size: %d  Strlen: %d\n", tSize, tEncodedAesIV, tSize, strlen(tEncodedAesIV));
+      syslog(LOG_DEBUG, "AESIV: [%.*s] Size: %d  Strlen: %d\n", tSize, tEncodedAesIV, tSize, (int)strlen(tEncodedAesIV));
       char *tDecodedIV =  decode_base64((unsigned char*) tEncodedAesIV, tSize, &tSize);
 
       // grab the key, copy it out of the receive buffer
       tHeaderVal = getFromContent(tContent, "a=rsaaeskey", &tKeySize);
       char tEncodedAesKey[tKeySize + 2]; // +1 for nl, +1 for \0
       getTrimmed(tHeaderVal, tKeySize, TRUE, TRUE, tEncodedAesKey);
-      slog(SLOG_DEBUG_VV, "AES KEY: [%s] Size: %d  Strlen: %d\n", tEncodedAesKey, tKeySize, strlen(tEncodedAesKey));
+      syslog(LOG_DEBUG, "AES KEY: [%s] Size: %d  Strlen: %d\n", tEncodedAesKey, tKeySize, (int)strlen(tEncodedAesKey));
       // remove base64 coding from key
       char *tDecodedAesKey = decode_base64((unsigned char*) tEncodedAesKey,
                               tKeySize, &tKeySize);  // Need to free DecodedAesKey
@@ -785,7 +775,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       int tFmtpSize = 0;
       char *tFmtp = getFromContent(tContent, "a=fmtp", &tFmtpSize);  // Don't need to free
       tFmtp = getTrimmedMalloc(tFmtp, tFmtpSize, TRUE, FALSE); // will need to free
-      slog(SLOG_DEBUG_VV, "Format: %s\n", tFmtp);
+      syslog(LOG_DEBUG, "Format: %s\n", tFmtp);
 
       RSA *rsa = loadKey();
       // Decrypt the binary aes key
@@ -794,11 +784,11 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       if(RSA_private_decrypt(tKeySize, (unsigned char *)tDecodedAesKey, 
       (unsigned char*) tDecryptedKey, rsa, RSA_PKCS1_OAEP_PADDING) >= 0)
       {
-        slog(SLOG_DEBUG, "Decrypted AES key from RSA Successfully\n");
+        syslog(LOG_DEBUG, "Decrypted AES key from RSA Successfully\n");
       }
       else
       {
-        slog(SLOG_INFO, "Error Decrypting AES key from RSA\n");
+        syslog(LOG_INFO, "Error Decrypting AES key from RSA\n");
       }
       free(tDecodedAesKey);
       RSA_free(rsa);
@@ -814,7 +804,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     struct comms *tComms = pConn->hairtunes;
     if (! (pipe(tComms->in) == 0 && pipe(tComms->out) == 0))
     {
-      slog(SLOG_INFO, "Error setting up hairtunes communications...some things probably wont work very well.\n");
+      syslog(LOG_INFO, "Error setting up hairtunes communications...some things probably wont work very well.\n");
     }
     
     // Setup fork
@@ -833,11 +823,11 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       tFound = getFromSetup(pConn->recv.data, "timing_port", &tSize);
       getTrimmed(tFound, tSize, 1, 0, tTPortStr);
 
-      slog(SLOG_DEBUG_VV, "converting %s and %s from str->int\n", tCPortStr, tTPortStr);
+      syslog(LOG_DEBUG, "converting %s and %s from str->int\n", tCPortStr, tTPortStr);
       int tControlport = atoi(tCPortStr);
       int tTimingport = atoi(tTPortStr);
 
-      slog(SLOG_DEBUG_V, "Got %d for CPort and %d for TPort\n", tControlport, tTimingport);
+      syslog(LOG_DEBUG, "Got %d for CPort and %d for TPort\n", tControlport, tTimingport);
       char *tRtp = NULL;
       char *tPipe = NULL;
 
@@ -868,7 +858,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
                       tAlsaCtl, tAlsaVol, bufferStartFill);
 
       // Quit when finished.
-      slog(SLOG_DEBUG, "Returned from hairtunes init....returning -1, should close out this whole side of the fork\n");
+      syslog(LOG_DEBUG, "Returned from hairtunes init....returning -1, should close out this whole side of the fork\n");
       return -1;
     }
     else if(tPid >0)
@@ -881,7 +871,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
       int tRead = read(tComms->out[0], tFromHairtunes, 80);
       if(tRead <= 0)
       {
-        slog(SLOG_INFO, "Error reading port from hairtunes function, assuming default port: %d\n", tPort);
+        syslog(LOG_INFO, "Error reading port from hairtunes function, assuming default port: %s\n", tPort);
       }
       else
       {
@@ -893,7 +883,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
         }
         else
         {
-          slog(SLOG_INFO, "Read %d bytes, Error translating %s into a port\n", tRead, tFromHairtunes);
+          syslog(LOG_INFO, "Read %d bytes, Error translating %s into a port\n", tRead, tFromHairtunes);
         }
       }
       //  READ Ports from here?close(pConn->hairtunes_pipes[0]);
@@ -909,7 +899,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     }
     else
     {
-      slog(SLOG_INFO, "Error forking process....dere' be errors round here.\n");
+      syslog(LOG_INFO, "Error forking process....dere' be errors round here.\n");
       return -1;
     }
   }
@@ -919,7 +909,7 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     addToShairBuffer(&(pConn->resp), "Connection: close\r\n");
     propogateCSeq(pConn);
     close(pConn->hairtunes->in[1]);
-    slog(SLOG_DEBUG, "Tearing down connection, closing pipes\n");
+    syslog(LOG_DEBUG, "Tearing down connection, closing pipes\n");
     //close(pConn->hairtunes->out[0]);
     tReturn = -1;  // Close client socket, but sends an ACK/OK packet first
   }
@@ -933,16 +923,16 @@ static int parseMessage(struct connection *pConn, unsigned char *pIpBin, unsigne
     propogateCSeq(pConn);
     int tSize = 0;
     char *tVol = getFromHeader(pConn->recv.data, "volume", &tSize);
-    slog(SLOG_DEBUG_VV, "About to write [vol: %.*s] data to hairtunes\n", tSize, tVol);
+    syslog(LOG_DEBUG, "About to write [vol: %.*s] data to hairtunes\n", tSize, tVol);
 
     write(pConn->hairtunes->in[1], "vol: ", 5);
     write(pConn->hairtunes->in[1], tVol, tSize);
     write(pConn->hairtunes->in[1], "\n", 1);
-    slog(SLOG_DEBUG_VV, "Finished writing data write data to hairtunes\n");
+    syslog(LOG_DEBUG, "Finished writing data write data to hairtunes\n");
   }
   else
   {
-    slog(SLOG_DEBUG, "\n\nUn-Handled recv: %s\n", pConn->recv.data);
+    syslog(LOG_DEBUG, "\n\nUn-Handled recv: %s\n", pConn->recv.data);
     propogateCSeq(pConn);
   }
   addToShairBuffer(&(pConn->resp), "\r\n");
@@ -1017,7 +1007,7 @@ static int startAvahi(const char *pHWStr, const char *pServerName, int pPort)
     char tName[100 + HWID_SIZE + 3];
     if(strlen(pServerName) > tMaxServerName)
     {
-      slog(SLOG_INFO,"Hey dog, we see you like long server names, "
+      syslog(LOG_INFO,"Hey dog, we see you like long server names, "
               "so we put a strncat in our command so we don't buffer overflow, while you listen to your flow.\n"
               "We just used the first %d characters.  Pick something shorter if you want\n", tMaxServerName);
     }
@@ -1028,7 +1018,7 @@ static int startAvahi(const char *pHWStr, const char *pServerName, int pPort)
     strcat(tName, pHWStr);
     strcat(tName, "@");
     strncat(tName, pServerName, tMaxServerName);
-    slog(AVAHI_LOG_LEVEL, "Avahi/DNS-SD Name: %s\n", tName);
+    syslog(AVAHI_LOG_LEVEL, "Avahi/DNS-SD Name: %s\n", tName);
     
     execlp("avahi-publish-service", "avahi-publish-service", tName,
          "_raop._tcp", tPort, "tp=UDP","sm=false","sv=false","ek=1","et=0,1",
@@ -1043,12 +1033,12 @@ static int startAvahi(const char *pHWStr, const char *pServerName, int pPort)
             perror("error");
     }
 
-    slog(SLOG_INFO, "Bad error... couldn't find or failed to run: avahi-publish-service OR dns-sd OR mDNSPublish\n");
+    syslog(LOG_INFO, "Bad error... couldn't find or failed to run: avahi-publish-service OR dns-sd OR mDNSPublish\n");
     exit(1);
   }
   else
   {
-    slog(SLOG_DEBUG_VV, "Avahi/DNS-SD started on PID: %d\n", tPid);
+    syslog(LOG_DEBUG, "Avahi/DNS-SD started on PID: %d\n", tPid);
   }
   return tPid;
 }
@@ -1125,7 +1115,7 @@ static char *getTrimmed(char *pChar, int pSize, int pEndStr, int pAddNL, char *p
 }
 
 /*
-static void slog(int pLevel, char *pFormat, ...)
+static void syslog(int pLevel, char *pFormat, ...)
 {
   #ifdef SHAIRPORT_LOG
   if(isLogEnabledFor(pLevel))
@@ -1185,9 +1175,9 @@ static void initBuffer(struct shairbuffer *pBuf, int pNumChars)
 {
   if(pBuf->data != NULL)
   {
-    slog(SLOG_DEBUG_VV, "Hrm, buffer wasn't cleaned up....trying to free\n");
+    syslog(LOG_DEBUG, "Hrm, buffer wasn't cleaned up....trying to free\n");
     free(pBuf->data);
-    slog(SLOG_DEBUG_VV, "Free didn't seem to seg fault....huzzah\n");
+    syslog(LOG_DEBUG, "Free didn't seem to seg fault....huzzah\n");
   }
   pBuf->current = 0;
   pBuf->marker = 0;
@@ -1245,6 +1235,6 @@ static RSA *loadKey(void)
   BIO *tBio = BIO_new_mem_buf(AIRPORT_PRIVATE_KEY, -1);
   RSA *rsa = PEM_read_bio_RSAPrivateKey(tBio, NULL, NULL, NULL); //NULL, NULL, NULL);
   BIO_free(tBio);
-  slog(RSA_LOG_LEVEL, "RSA Key: %d\n", RSA_check_key(rsa));
+  syslog(RSA_LOG_LEVEL, "RSA Key: %d\n", RSA_check_key(rsa));
   return rsa;
 }

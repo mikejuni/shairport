@@ -235,7 +235,7 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
         if (sscanf(line, "vol: %lf\n", &f)) {
             assert(f<=0);
 #ifdef DEBUGCTL
-            slog(LOG_DEBUG_VV, "VOL: %lf\n", f);
+            syslog(LOG_DEBUG, "VOL: %lf\n", f);
 #endif
             set_volume(f);
 #ifndef USE_ALSA_VOLUME
@@ -254,13 +254,12 @@ int hairtunes_init(char *pAeskey, char *pAesiv, char *fmtpstr, int pCtrlPort, in
             ab_resync();
             pthread_mutex_unlock(&ab_mutex);
 #ifdef DEBUGCTL
-            slog(LOG_DEBUG_VV, "FLUSH\n");
+            syslog(LOG_DEBUG, "FLUSH\n");
 #endif
         }
     }
     deinit_output();
-    fprintf(stderr, "bye!\n");
-    fflush(stderr);
+    syslog(LOG_INFO, "bye!\n");
 
     return EXIT_SUCCESS;
 }
@@ -343,7 +342,7 @@ int main(int argc, char **argv) {
 #endif
 
 static void init_buffer(void) {
-    fprintf(stderr,"INIT_BUFFER: Initiating memory\n");
+    syslog(LOG_DEBUG,"INIT_BUFFER: Initiating memory\n");
     audio_buffer=malloc(sizeof(abuf_t)*g_buffer_frames);
     int i;
     for (i=0; i<g_buffer_frames; i++)
@@ -403,7 +402,7 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
     } else if (seq_order(ab_read, seqno)) {     // late but not yet played
         abuf = audio_buffer + BUFIDX(seqno);
     } else {    // too late.
-        fprintf(stderr, "\nlate packet %04X (%04X:%04X)\n", seqno, ab_read, ab_write);
+        syslog(LOG_WARNING, "\nlate packet %04X (%04X:%04X)\n", seqno, ab_read, ab_write);
     }
     buf_fill = ab_write - ab_read;
     pthread_mutex_unlock(&ab_mutex);
@@ -423,7 +422,7 @@ static void buffer_put_packet(seq_t seqno, char *data, int len) {
     pthread_mutex_unlock(&ab_mutex);
 
 #ifdef DEBUGBUFWRITE
-    fprintf(stderr,"BUFFER_PUT_PACKET: buf_fill:%d\n",buf_fill);
+    syslog(LOG_DEBUG,"BUFFER_PUT_PACKET: buf_fill:%d\n",buf_fill);
 #endif
 }
 
@@ -484,7 +483,7 @@ static void *rtp_thread_func(void *arg) {
             else {
                 // resync?
                 if (type == 0x56 && seqno == 0) {
-                    fprintf(stderr, "Suspected resync request packet received. Initiating resync.\n");
+                    syslog(LOG_WARNING, "Suspected resync request packet received. Initiating resync.\n");
                     pthread_mutex_lock(&ab_mutex);
                     ab_resync();
                     pthread_mutex_unlock(&ab_mutex);
@@ -501,7 +500,7 @@ static void rtp_request_resend(seq_t first, seq_t last) {
     if (seq_order(last, first))
         return;
 
-    fprintf(stderr, "requesting resend on %d packets (port %d)\n", last-first+1, controlport);
+    syslog(LOG_WARNING, "requesting resend on %d packets (port %d)\n", last-first+1, controlport);
 
     char req[8];    // *not* a standard RTCP NACK
     req[0] = 0x80;
@@ -695,7 +694,7 @@ static void bf_est_update(short fill) {
     bf_est_drift = biquad_filt(&bf_drift_lpf, CONTROL_B*(adj_error + err_deriv) + bf_est_drift);
 
 #ifdef DEBUGSTREAM
-    fprintf(stderr, "bf %d err %f drift %f desiring %f ed %f estd %f\n",
+    syslog(LOG_DEBUG, "bf %d err %f drift %f desiring %f ed %f estd %f\n",
             fill, bf_est_err, bf_est_drift, desired_fill, err_deriv, err_deriv + adj_error);
 #endif
     bf_playback_rate = 1.0 + adj_error + bf_est_drift;
@@ -716,7 +715,7 @@ static short *buffer_get_frame(void) {
     buf_fill = ab_write - ab_read;
     if (buf_fill < 1 || !ab_synced || ab_buffering) {    // init or underrun. stop and wait
         if (ab_synced)
-            fprintf(stderr, "\nunderrun.\n");
+            syslog(LOG_WARNING, "BUFFER_GET_FRAME: underrun.\n");
 
         ab_buffering = 1;
         pthread_cond_wait(&ab_buffer_ready, &ab_mutex);
@@ -728,7 +727,7 @@ static short *buffer_get_frame(void) {
         return 0;
     }
     if (buf_fill >= g_buffer_frames) {   // overrunning! uh-oh. restart at a sane distance
-        fprintf(stderr, "\noverrun.\n");
+        syslog(LOG_WARNING, "BUFFER_GET_FRAME: overrun.\n");
         ab_read = ab_write - buffer_start_fill;
     }
     read = ab_read;
@@ -750,7 +749,7 @@ static short *buffer_get_frame(void) {
 
     abuf_t *curframe = audio_buffer + BUFIDX(read);
     if (!curframe->ready) {
-        fprintf(stderr, "\nmissing frame.\n");
+        syslog(LOG_WARNING, "\nmissing frame.\n");
         memset(curframe->data, 0, FRAME_BYTES);
     }
     curframe->ready = 0;
@@ -777,7 +776,7 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
 #endif
 
 #ifdef DEBUGSTUFF
-    slog(LOG_DEBUG_VV,"STUFF: Stuffing playback rate %f\n", playback_rate);
+    syslog(LOG_DEBUG,"STUFF: Stuffing playback rate %f\n", playback_rate);
 #endif
 
 #ifdef USE_ALSA_VOLUME
@@ -788,12 +787,12 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
 #ifndef DISABLESTUFF
     if (stuff) {
         if (stuff==1) {
-            fprintf(stderr, "STUFF: +++++++++\n");
+            syslog(LOG_DEBUG, "STUFF: +++++++++\n");
             // interpolate one sample
             *outptr++ = ((long)inptr[-2] + (long)inptr[0]) >> 1;
             *outptr++ = ((long)inptr[-1] + (long)inptr[1]) >> 1;
         } else if (stuff==-1) {
-            fprintf(stderr, "STUFF: ---------\n");
+            syslog(LOG_DEBUG, "STUFF: ---------\n");
             inptr++;
             inptr++;
         }
@@ -812,12 +811,12 @@ static int stuff_buffer(double playback_rate, short *inptr, short *outptr) {
 #ifndef DISABLESTUFF
     if (stuff) {
         if (stuff==1) {
-            fprintf(stderr, "+++++++++\n");
+            syslog(LOG_DEBUG, "+++++++++\n");
             // interpolate one sample
             *outptr++ = dithered_vol(((long)inptr[-2] + (long)inptr[0]) >> 1);
             *outptr++ = dithered_vol(((long)inptr[-1] + (long)inptr[1]) >> 1);
         } else if (stuff==-1) {
-            fprintf(stderr, "---------\n");
+            syslog(LOG_DEBUG, "---------\n");
             inptr++;
             inptr++;
         }

@@ -41,6 +41,7 @@ static const int host_bigendian = 0;
 #endif
 
 #include "alac.h"
+#include "syslog.h"
 
 #define _Swap32(v) do { \
                    v = (((v) & 0x000000FF) << 0x18) | \
@@ -791,7 +792,7 @@ void decode_frame(alac_file *alac,
             }
             else
             {
-                fprintf(stderr, "FIXME: unhandled predicition type: %i\n", prediction_type);
+                syslog(LOG_WARNING, "FIXME: unhandled predicition type: %i\n", prediction_type);
                 /* i think the only other prediction type (or perhaps this is just a
                  * boolean?) runs adaptive fir twice.. like:
                  * predictor_decompress_fir_adapt(predictor_error, tempout, ...)
@@ -840,7 +841,7 @@ void decode_frame(alac_file *alac,
         case 16:
         {
 #ifdef DEBUGALAC
-            fprintf(stderr,"ALAC: 16 bit sample\n");
+            syslog(LOG_DEBUG,"ALAC: 16 bit sample\n");
 #endif
             int i;
             for (i = 0; i < outputsamples; i++)
@@ -855,7 +856,7 @@ void decode_frame(alac_file *alac,
         case 24:
         {
 #ifdef DEBUGALAC
-            fprintf(stderr,"ALAC: 24 bit sample\n");
+            syslog(LOG_DEBUG,"ALAC: 24 bit sample\n");
 #endif
             int i;
             for (i = 0; i < outputsamples; i++)
@@ -879,9 +880,9 @@ void decode_frame(alac_file *alac,
         case 20:
         case 32:
 #ifdef DEBUGALAC
-            fprintf(stderr,"ALAC: 32 bit sample\n");
+            syslog(LOG_DEBUG,"ALAC: 32 bit sample\n");
 #endif
-            fprintf(stderr, "FIXME: unimplemented sample size %i\n", alac->setinfo_sample_size);
+            syslog(LOG_WARNING, "FIXME: unimplemented sample size %i\n", alac->setinfo_sample_size);
             break;
         default:
             break;
@@ -1000,7 +1001,7 @@ void decode_frame(alac_file *alac,
             }
             else
             { /* see mono case */
-                fprintf(stderr, "FIXME: unhandled predicition type: %i\n", prediction_type_a);
+                syslog(LOG_WARNING, "FIXME: unhandled predicition type: %i\n", prediction_type_a);
             }
 
             /* channel 2 */
@@ -1025,7 +1026,7 @@ void decode_frame(alac_file *alac,
             }
             else
             {
-                fprintf(stderr, "FIXME: unhandled predicition type: %i\n", prediction_type_b);
+                syslog(LOG_WARNING, "FIXME: unhandled predicition type: %i\n", prediction_type_b);
             }
         }
         else
@@ -1078,7 +1079,7 @@ void decode_frame(alac_file *alac,
         case 16:
         {
 #ifdef DEBUGALAC
-            fprintf(stderr,"ALAC: 16 bit, 2 channels\n");
+            syslog(LOG_DEBUG,"ALAC: 16 bit, 2 channels\n");
 #endif
             deinterlace_16(alac->outputsamples_buffer_a,
                            alac->outputsamples_buffer_b,
@@ -1092,7 +1093,7 @@ void decode_frame(alac_file *alac,
         case 24:
         {
 #ifdef DEBUGALAC
-            fprintf(stderr,"ALAC: 24 bit, 2 channels\n");
+            syslog(LOG_DEBUG,"ALAC: 24 bit, 2 channels\n");
 #endif
             deinterlace_24(alac->outputsamples_buffer_a,
                            alac->outputsamples_buffer_b,
@@ -1108,7 +1109,7 @@ void decode_frame(alac_file *alac,
         }
         case 20:
         case 32:
-            fprintf(stderr, "FIXME: unimplemented sample size %i\n", alac->setinfo_sample_size);
+            syslog(LOG_WARNING, "FIXME: unimplemented sample size %i\n", alac->setinfo_sample_size);
             break;
         default:
             break;

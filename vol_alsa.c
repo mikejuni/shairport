@@ -3,6 +3,7 @@
 #include <math.h>
 #include "vol.h"
 #include <stdarg.h>
+#include <syslog.h>
 
 static char* DEFAULT_CARD = "default";
 static snd_mixer_t *mixer_handle = NULL;
@@ -36,7 +37,7 @@ void set_volume_param(char* params, ...)
 void init_volume_ctl()
 {
 #ifdef USE_ALSA_VOLUME
-    fprintf(stderr,"ALSA: Use ALSA Mixer rather than soft manupulating volume\n");
+    syslog(LOG_INFO,"ALSA: Use ALSA Mixer rather than soft manupulating volume\n");
     snd_mixer_open(&mixer_handle, 0);
     snd_mixer_attach(mixer_handle, g_ctl);
     snd_mixer_selem_register(mixer_handle,NULL,NULL);
@@ -46,7 +47,7 @@ void init_volume_ctl()
     snd_mixer_selem_id_set_name(mixer_master, g_mixer);
     volume_handle = snd_mixer_find_selem(mixer_handle, mixer_master);
     snd_mixer_selem_get_playback_volume_range (volume_handle, &g_vol_min, &g_vol_max);
-    fprintf(stderr,"ALSA: Mixer volume from %d to %d\n",(int)g_vol_min, (int)g_vol_max);
+    syslog(LOG_INFO,"ALSA: Mixer volume from %d to %d\n",(int)g_vol_min, (int)g_vol_max);
 #endif
 }
 
@@ -65,12 +66,12 @@ void set_volume(double vol)
 #ifdef USE_ALSA_VOLUME
     long cur_vol=(long)(pow(10.0,0.05*vol)*(double)g_vol_max+0.5);
 #ifdef DEBUGALSAVOL
-    fprintf(stderr,"ALSA: Setting volume in ALSA %f with volume %d\n",vol,(int)cur_vol);
+    syslog(LOG_INFO,"ALSA: Setting volume in ALSA %f with volume %d\n",vol,(int)cur_vol);
 #endif
     if (cur_vol!=g_prev_vol)
     {
 #ifdef DEBUGALSAVOL
-        fprintf(stderr,"ALSA: Calling function to set volume\n");
+        syslog(LOG_DEBUG,"ALSA: Calling function to set volume\n");
 #endif
     	snd_mixer_selem_set_playback_volume_all(volume_handle,cur_vol);
         g_prev_vol=cur_vol;
