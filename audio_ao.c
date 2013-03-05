@@ -81,7 +81,7 @@ void* audio_init(int sampling_rate)
     ao_initialize();
 
     int driver;
-    if (strlen(libao_driver)==0) {
+    if (strlen(libao_driver)!=0) {
         // if a libao driver is specified on the command line, use that
         driver = ao_driver_id(libao_driver);
         if (driver == -1) {
