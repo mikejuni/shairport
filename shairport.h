@@ -15,11 +15,13 @@
 
 
 #define HWID_SIZE 6
+/*
 #define SHAIRPORT_LOG 1
 #define LOG_INFO     1
 #define LOG_DEBUG    5
 #define LOG_DEBUG_V  6
 #define LOG_DEBUG_VV 7
+*/
 
 struct shairbuffer
 {
