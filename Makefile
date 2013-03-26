@@ -6,6 +6,7 @@ DEBUGCFLAGS+=-DDEBUGCTL
 #DEBUGCFLAGS+=-DDEBUGSTUFF
 AUDIO:=ao
 VOL:=alsa
+LINKAVAHI:=1
 ifneq ($(VOL),soft)
 	USECFLAGS:=$(shell pkg-config --cflags alsa) 
 	USELDFLAGS:=$(shell pkg-config --libs alsa)
@@ -16,6 +17,10 @@ LDFLAGS+=-lm -lpthread $(shell pkg-config --libs openssl)
 USECFLAGS+=$(shell pkg-config --cflags $(AUDIO)) 
 USELDFLAGS+=$(shell pkg-config --libs $(AUDIO)) 
 USEOBJS+=socketlib.o shairport.o alac.o hairtunes.o audio_$(AUDIO).o  vol_$(VOL).o
+ifdef LINKAVAHI
+	CFLAGS+=$(shell pkg-config --cflags avahi-client) -DLINKAVAHI
+	LDFLAGS+=$(shell pkg-config --libs avahi-client)
+endif
 all: shairport
 
 shairport: $(USEOBJS) 
